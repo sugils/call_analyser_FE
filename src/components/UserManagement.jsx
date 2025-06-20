@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiService from './apiService';
 
 // Modern Icon Components
 const EditIcon = () => (
@@ -105,152 +106,229 @@ const BarChartIcon = () => (
   </svg>
 );
 
-const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
-  // Initial user data with call history
-  const initialUsers = [
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      role: 'Agent',
-      status: 'Active',
-      avgRating: 4.5,
-      totalCalls: 125,
-      improvementRate: '+12%',
-      calls: [
-        { id: 'CALL001', date: '2024-03-15', time: '09:30 AM', duration: '5:23', rating: 4.5, sentiment: 'Positive' },
-        { id: 'CALL002', date: '2024-03-14', time: '02:15 PM', duration: '3:45', rating: 3.8, sentiment: 'Neutral' },
-        { id: 'CALL003', date: '2024-03-13', time: '11:00 AM', duration: '7:12', rating: 4.8, sentiment: 'Very Positive' },
-        { id: 'CALL004', date: '2024-03-12', time: '04:30 PM', duration: '6:30', rating: 4.2, sentiment: 'Positive' },
-        { id: 'CALL005', date: '2024-03-11', time: '10:45 AM', duration: '4:15', rating: 3.5, sentiment: 'Neutral' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      role: 'Supervisor',
-      status: 'Active',
-      avgRating: 4.7,
-      totalCalls: 98,
-      improvementRate: '+15%',
-      calls: [
-        { id: 'CALL011', date: '2024-03-15', time: '10:00 AM', duration: '4:30', rating: 4.7, sentiment: 'Positive' },
-        { id: 'CALL012', date: '2024-03-14', time: '03:45 PM', duration: '5:15', rating: 4.1, sentiment: 'Positive' },
-        { id: 'CALL013', date: '2024-03-13', time: '11:30 AM', duration: '6:00', rating: 3.9, sentiment: 'Neutral' },
-        { id: 'CALL014', date: '2024-03-12', time: '02:00 PM', duration: '4:45', rating: 4.5, sentiment: 'Positive' },
-        { id: 'CALL015', date: '2024-03-11', time: '09:15 AM', duration: '7:20', rating: 4.8, sentiment: 'Very Positive' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Peter Jones',
-      email: 'peter.jones@example.com',
-      role: 'Agent',
-      status: 'Inactive',
-      avgRating: 4.3,
-      totalCalls: 87,
-      improvementRate: '+8%',
-      calls: [
-        { id: 'CALL021', date: '2024-03-15', time: '08:30 AM', duration: '5:00', rating: 4.3, sentiment: 'Positive' },
-        { id: 'CALL022', date: '2024-03-14', time: '12:15 PM', duration: '6:30', rating: 3.7, sentiment: 'Neutral' },
-        { id: 'CALL023', date: '2024-03-13', time: '02:45 PM', duration: '4:15', rating: 4.6, sentiment: 'Positive' },
-        { id: 'CALL024', date: '2024-03-12', time: '10:00 AM', duration: '7:00', rating: 4.1, sentiment: 'Positive' },
-        { id: 'CALL025', date: '2024-03-11', time: '03:30 PM', duration: '5:45', rating: 3.8, sentiment: 'Neutral' }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Maria Garcia',
-      email: 'maria.garcia@example.com',
-      role: 'Agent',
-      status: 'Active',
-      avgRating: 4.6,
-      totalCalls: 110,
-      improvementRate: '+18%',
-      calls: [
-        { id: 'CALL031', date: '2024-03-15', time: '10:30 AM', duration: '6:15', rating: 4.4, sentiment: 'Positive' },
-        { id: 'CALL032', date: '2024-03-14', time: '01:45 PM', duration: '5:30', rating: 4.6, sentiment: 'Positive' },
-        { id: 'CALL033', date: '2024-03-13', time: '09:15 AM', duration: '4:45', rating: 4.8, sentiment: 'Very Positive' },
-        { id: 'CALL034', date: '2024-03-12', time: '03:20 PM', duration: '7:10', rating: 4.5, sentiment: 'Positive' },
-        { id: 'CALL035', date: '2024-03-11', time: '11:50 AM', duration: '5:25', rating: 4.3, sentiment: 'Positive' }
-      ]
-    },
-    {
-      id: 5,
-      name: 'David Wilson',
-      email: 'david.wilson@example.com',
-      role: 'Agent',
-      status: 'Active',
-      avgRating: 3.9,
-      totalCalls: 92,
-      improvementRate: '-5%',
-      calls: [
-        { id: 'CALL041', date: '2024-03-15', time: '11:15 AM', duration: '4:50', rating: 3.7, sentiment: 'Neutral' },
-        { id: 'CALL042', date: '2024-03-14', time: '02:30 PM', duration: '6:05', rating: 3.9, sentiment: 'Neutral' },
-        { id: 'CALL043', date: '2024-03-13', time: '10:45 AM', duration: '5:20', rating: 4.1, sentiment: 'Positive' },
-        { id: 'CALL044', date: '2024-03-12', time: '03:55 PM', duration: '4:30', rating: 3.8, sentiment: 'Neutral' },
-        { id: 'CALL045', date: '2024-03-11', time: '01:25 PM', duration: '7:45', rating: 4.0, sentiment: 'Positive' }
-      ]
-    }
-  ];
+const LoaderIcon = () => (
+  <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 12a9 9 0 11-6.219-8.56" />
+  </svg>
+);
 
-  const [localUsers, setLocalUsers] = useState(initialUsers);
+const AlertTriangleIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const RefreshIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+  </svg>
+);
+
+const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
+  // State for dynamic data
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // UI state
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState('');
   const [expandedCalls, setExpandedCalls] = useState({});
   const [activeTab, setActiveTab] = useState('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [filteredUsers, setFilteredUsers] = useState(initialUsers);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
 
-  // Toggle theme function
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  // Add user form state
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    role: 'candidate'
+  });
+
+  // Fetch users from backend
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const usersData = await apiService.getUsers();
+      const formattedUsers = usersData.map(user => apiService.formatUserForFrontend(user));
+      
+      setUsers(formattedUsers);
+      setFilteredUsers(formattedUsers);
+      setLastUpdated(new Date());
+      
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAddUser = () => {
-    const newUser = {
-      id: Math.max(...localUsers.map(u => u.id), 0) + 1,
-      name: 'New User',
-      email: 'new.user@example.com',
-      role: 'Agent',
-      status: 'Active',
-      avgRating: 0,
-      totalCalls: 0,
-      improvementRate: '0%',
-      calls: []
-    };
-    setLocalUsers([...localUsers, newUser]);
-    setShowAddModal(false);
+  // Load users on component mount
+  useEffect(() => {
+    fetchUsers();
+    
+    // Set up auto-refresh every 2 minutes
+    const refreshInterval = setInterval(fetchUsers, 2 * 60 * 1000);
+    
+    return () => clearInterval(refreshInterval);
+  }, []);
+
+  // Search and filter functionality
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const results = users.filter(user =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.role.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredUsers(results);
+  }, [searchQuery, users]);
+
+  // Sorting functionality
+  useEffect(() => {
+    if (!sortConfig.key) return;
+    
+    let sortableUsers = [...filteredUsers];
+    sortableUsers.sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle numeric values
+      if (sortConfig.key === 'avgRating' || sortConfig.key === 'totalCalls') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+    
+    setFilteredUsers(sortableUsers);
+  }, [sortConfig, users]);
+
+  // Add new user
+  const handleAddUser = async () => {
+    try {
+      if (!newUser.name.trim() || !newUser.email.trim()) {
+        alert('Name and email are required');
+        return;
+      }
+
+      setIsLoading(true);
+      const createdUser = await apiService.createUser(newUser);
+      
+      // Add to local state
+      const formattedUser = apiService.formatUserForFrontend(createdUser);
+      setUsers(prev => [formattedUser, ...prev]);
+      
+      // Reset form and close modal
+      setNewUser({ name: '', email: '', role: 'candidate' });
+      setShowAddModal(false);
+      
+      // Show success message
+      alert('User created successfully!');
+      
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create user: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteUser = (id) => {
-    setLocalUsers(localUsers.filter(u => u.id !== id));
+  // Delete/deactivate user
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to deactivate this user?')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await apiService.deactivateUser(userId);
+      
+      // Remove from local state
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      
+      alert('User deactivated successfully!');
+      
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      alert('Failed to deactivate user: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Start editing user
   const handleEditUser = (user) => {
     setEditingId(user.id);
     setEditName(user.name);
     setEditEmail(user.email);
+    setEditRole(user.role);
   };
 
-  const handleSaveEdit = () => {
-    setLocalUsers(localUsers.map(u =>
-      u.id === editingId ? { ...u, name: editName, email: editEmail } : u
-    ));
-    setEditingId(null);
+  // Save edit
+  const handleSaveEdit = async () => {
+    try {
+      setIsLoading(true);
+      
+      const updatedUser = await apiService.updateUser(editingId, {
+        name: editName,
+        email: editEmail,
+        role: editRole
+      });
+      
+      // Update local state
+      const formattedUser = apiService.formatUserForFrontend(updatedUser);
+      setUsers(prev => prev.map(u => u.id === editingId ? formattedUser : u));
+      
+      // Reset editing state
+      setEditingId(null);
+      setEditName('');
+      setEditEmail('');
+      setEditRole('');
+      
+      alert('User updated successfully!');
+      
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Failed to update user: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Cancel edit
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditName('');
     setEditEmail('');
+    setEditRole('');
   };
 
+  // Toggle call history
   const toggleCalls = (userId) => {
     setExpandedCalls(prev => ({
       ...prev,
@@ -258,24 +336,19 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     }));
   };
 
-  // Navigate to individual user dashboard
+  // Navigate to user dashboard
   const handleViewDashboard = (userId) => {
     if (navigateToUserDashboard) {
       navigateToUserDashboard(userId);
     }
   };
 
-  // Search and filter functionality
-  useEffect(() => {
-    const results = localUsers.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredUsers(results);
-  }, [searchQuery, localUsers]);
+  // Manual refresh
+  const handleRefresh = () => {
+    fetchUsers();
+  };
 
-  // Sorting functionality
+  // Sorting request
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -284,23 +357,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     setSortConfig({ key, direction });
   };
 
-  useEffect(() => {
-    let sortableUsers = [...filteredUsers];
-    if (sortConfig.key) {
-      sortableUsers.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    setFilteredUsers(sortableUsers);
-  }, [sortConfig]);
-
-  // Theme variables
+  // Theme configuration
   const themes = {
     dark: {
       bg: 'bg-[#0f172a]',
@@ -322,6 +379,51 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
 
   const theme = isDarkMode ? themes.dark : themes.light;
 
+  // Loading state
+  if (isLoading && !lastUpdated) {
+    return (
+      <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans transition-colors duration-300`}>
+        <div className="ml-20 lg:ml-64 min-h-screen">
+          <div className="p-8 lg:p-10">
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center">
+                <LoaderIcon className="w-12 h-12 mx-auto mb-4 text-indigo-500" />
+                <h3 className="text-xl font-semibold mb-2">Loading Users</h3>
+                <p className={theme.subtext}>Fetching user data from server...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !lastUpdated) {
+    return (
+      <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans transition-colors duration-300`}>
+        <div className="ml-20 lg:ml-64 min-h-screen">
+          <div className="p-8 lg:p-10">
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center">
+                <AlertTriangleIcon className="w-12 h-12 mx-auto mb-4 text-red-500" />
+                <h3 className="text-xl font-semibold mb-2">Failed to Load Users</h3>
+                <p className={`${theme.subtext} mb-4`}>{error}</p>
+                <button
+                  onClick={handleRefresh}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 mx-auto"
+                >
+                  <RefreshIcon />
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans transition-colors duration-300`}>
       {/* Main Content */}
@@ -333,8 +435,13 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
               <h2 className="text-4xl font-bold flex items-center tracking-tight">
                 <UsersIcon className={`mr-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
                 User Management
+                {isLoading && (
+                  <LoaderIcon className="ml-3 text-indigo-400" />
+                )}
               </h2>
-              <p className={`${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} mt-2 text-lg`}>Manage users and analyze their performance</p>
+              <p className={`${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} mt-2 text-lg`}>
+                Manage users and analyze their performance
+              </p>
             </div>
             <div className="flex items-center gap-4 w-full lg:w-auto">
               <div className={`relative flex items-center ${theme.cardBg} rounded-full px-5 py-3 shadow-lg transition-all duration-200 focus-within:shadow-xl flex-1 lg:flex-initial lg:w-72`}>
@@ -348,6 +455,18 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                 />
               </div>
               <button
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className={`p-3 rounded-full transition-colors ${
+                  isLoading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-white/10'
+                }`}
+                title="Refresh Data"
+              >
+                <RefreshIcon className={isLoading ? 'animate-spin' : ''} />
+              </button>
+              <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-xl transform hover:scale-105 transition-all whitespace-nowrap font-semibold"
               >
@@ -356,6 +475,19 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
               </button>
             </div>
           </div>
+
+          {/* Error Banner */}
+          {error && lastUpdated && (
+            <div className="mb-6 p-4 bg-red-600/20 border border-red-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-red-300">
+                <AlertTriangleIcon />
+                <span className="font-medium">Warning</span>
+              </div>
+              <p className="text-red-200 text-sm mt-1">
+                Failed to fetch latest data: {error}. Showing cached data from {lastUpdated.toLocaleTimeString()}.
+              </p>
+            </div>
+          )}
 
           {/* User Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
@@ -419,7 +551,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                   <div>
                     <p className={`${isDarkMode ? 'text-pink-300' : 'text-pink-600'} text-sm font-semibold uppercase tracking-wider`}>Average Rating</p>
                     <p className={`text-5xl font-bold mt-3 flex items-end ${isDarkMode ? '' : 'text-gray-800'}`}>
-                      {(filteredUsers.reduce((acc, user) => acc + user.avgRating, 0) / filteredUsers.length).toFixed(1)}
+                      {filteredUsers.length > 0 ? (filteredUsers.reduce((acc, user) => acc + (user.avgRating || 0), 0) / filteredUsers.length).toFixed(1) : '0.0'}
                       <span className={`${isDarkMode ? 'text-pink-400' : 'text-pink-500'} text-xl ml-2 font-medium`}>/ 5.0</span>
                     </p>
                   </div>
@@ -445,7 +577,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                   <div>
                     <p className={`${isDarkMode ? 'text-amber-300' : 'text-amber-600'} text-sm font-semibold uppercase tracking-wider`}>Total Calls</p>
                     <p className={`text-5xl font-bold mt-3 flex items-end ${isDarkMode ? '' : 'text-gray-800'}`}>
-                      {filteredUsers.reduce((acc, user) => acc + (user.totalCalls || user.calls?.length || 0), 0)}
+                      {filteredUsers.reduce((acc, user) => acc + (user.totalCalls || 0), 0)}
                       <span className={`${isDarkMode ? 'text-amber-400' : 'text-amber-500'} text-xl ml-2 font-medium`}>calls</span>
                     </p>
                   </div>
@@ -470,270 +602,316 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
             <div className="p-8">
               <h3 className="text-2xl font-bold mb-8 flex items-center">
                 <UsersIcon className={`mr-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
-                Users List
+                Users List ({filteredUsers.length})
               </h3>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className={`border-b ${theme.border}`}>
-                      <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('name')}>
-                        <div className="flex items-center gap-2">
-                          Name
-                          {sortConfig.key === 'name' && (
-                            <span className="text-indigo-500">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('email')}>
-                        <div className="flex items-center gap-2">
-                          Email
-                          {sortConfig.key === 'email' && (
-                            <span className="text-indigo-500">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('role')}>
-                        <div className="flex items-center gap-2">
-                          Role
-                          {sortConfig.key === 'role' && (
-                            <span className="text-indigo-500">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('status')}>
-                        <div className="flex items-center gap-2">
-                          Status
-                          {sortConfig.key === 'status' && (
-                            <span className="text-indigo-500">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('avgRating')}>
-                        <div className="flex items-center gap-2">
-                          Rating
-                          {sortConfig.key === 'avgRating' && (
-                            <span className="text-indigo-500">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th className={`px-6 py-4 text-center text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
-                        Performance
-                      </th>
-                      <th className={`px-6 py-4 text-center text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700/20">
-                    {filteredUsers.map(user => (
-                      <React.Fragment key={user.id}>
-                        <tr className={`${theme.hover} transition-all duration-200`}>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            {editingId === user.id ? (
-                              <input
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full font-medium`}
-                              />
-                            ) : (
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden shadow-md">
-                                  <span className="text-white font-bold text-sm">{user.name.split(' ').map(n => n[0]).join('')}</span>
-                                </div>
-                                <div>
-                                  <span className="font-semibold block">{user.name}</span>
-                                  <span className={`text-xs ${theme.subtext}`}>{user.totalCalls || user.calls?.length || 0} calls</span>
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            {editingId === user.id ? (
-                              <input
-                                type="email"
-                                value={editEmail}
-                                onChange={(e) => setEditEmail(e.target.value)}
-                                className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full font-medium`}
-                              />
-                            ) : (
-                              <div className="text-sm font-medium">{user.email}</div>
-                            )}
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            <div className="text-sm font-medium">{user.role}</div>
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            <span className={`px-3 py-1.5 text-xs font-bold rounded-full ${
-                              user.status === 'Active' 
-                                ? 'bg-green-500/20 text-green-500' 
-                                : 'bg-red-500/20 text-red-500'
-                            }`}>
-                              {user.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              <StarIcon filled={true} className={`${
-                                user.avgRating >= 4.5 ? 'text-yellow-400' : 
-                                user.avgRating >= 4.0 ? 'text-yellow-500' : 
-                                user.avgRating >= 3.5 ? 'text-orange-500' : 
-                                'text-orange-600'
-                              }`} />
-                              <span className="font-bold text-sm">{user.avgRating}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <span className={`text-sm font-semibold ${
-                                user.improvementRate?.startsWith('+') ? 'text-green-500' : 
-                                user.improvementRate?.startsWith('-') ? 'text-red-500' : 
-                                'text-gray-500'
-                              }`}>
-                                {user.improvementRate || '0%'}
+              {filteredUsers.length === 0 ? (
+                <div className={`text-center py-12 ${theme.subtext}`}>
+                  <UsersIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <h4 className="text-xl font-semibold mb-2">No Users Found</h4>
+                  <p className="mb-4">
+                    {searchQuery ? 'No users match your search criteria.' : 'Get started by adding your first user.'}
+                  </p>
+                  {!searchQuery && (
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Add First User
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className={`border-b ${theme.border}`}>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('name')}>
+                          <div className="flex items-center gap-2">
+                            Name
+                            {sortConfig.key === 'name' && (
+                              <span className="text-indigo-500">
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
                               </span>
-                              <button
-                                onClick={() => toggleCalls(user.id)}
-                                className={`${isDarkMode ? 'text-indigo-400 hover:bg-indigo-400/10' : 'text-indigo-600 hover:bg-indigo-600/10'} flex items-center gap-1 transition-all duration-200 px-2 py-1 rounded-lg text-xs font-medium`}
-                                title="View Call History"
-                              >
-                                <PhoneIcon className="w-3 h-3" />
-                                {user.calls ? user.calls.length : 0}
-                                {expandedCalls[user.id] ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-center">
-                            {editingId === user.id ? (
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={handleSaveEdit}
-                                  className={`text-green-500 hover:bg-green-500/10 rounded-lg p-2 transition-all`}
-                                  title="Save"
-                                >
-                                  <CheckIcon />
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className={`text-red-500 hover:bg-red-500/10 rounded-lg p-2 transition-all`}
-                                  title="Cancel"
-                                >
-                                  <CloseIcon />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => handleViewDashboard(user.id)}
-                                  className={`text-purple-500 hover:bg-purple-500/10 rounded-lg p-2 transition-all transform hover:scale-110`}
-                                  title="View Performance Dashboard"
-                                >
-                                  <BarChartIcon />
-                                </button>
-                                <button
-                                  onClick={() => handleEditUser(user)}
-                                  className={`text-indigo-500 hover:bg-indigo-500/10 rounded-lg p-2 transition-all`}
-                                  title="Edit"
-                                >
-                                  <EditIcon />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className={`text-red-500 hover:bg-red-500/10 rounded-lg p-2 transition-all`}
-                                  title="Delete"
-                                >
-                                  <DeleteIcon />
-                                </button>
-                              </div>
                             )}
-                          </td>
-                        </tr>
-
-                        {/* Call History Row */}
-                        {expandedCalls[user.id] && (
-                          <tr>
-                            <td colSpan="7" className="px-6 py-6">
-                              <div className={`${isDarkMode ? 'bg-indigo-900/10' : 'bg-indigo-50'} p-6 rounded-2xl shadow-inner border ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200'}`}>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-                                  <p className={`text-lg font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                                    Recent Call History for {user.name}
-                                  </p>
-                                  <button
-                                    onClick={() => handleViewDashboard(user.id)}
-                                    className={`${isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-500'} flex items-center gap-2 font-semibold transition-colors px-4 py-2 rounded-lg hover:bg-purple-500/10`}
-                                  >
-                                    <BarChartIcon />
-                                    View Full Dashboard
-                                  </button>
+                          </div>
+                        </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('email')}>
+                          <div className="flex items-center gap-2">
+                            Email
+                            {sortConfig.key === 'email' && (
+                              <span className="text-indigo-500">
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('role')}>
+                          <div className="flex items-center gap-2">
+                            Role
+                            {sortConfig.key === 'role' && (
+                              <span className="text-indigo-500">
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('status')}>
+                          <div className="flex items-center gap-2">
+                            Status
+                            {sortConfig.key === 'status' && (
+                              <span className="text-indigo-500">
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('avgRating')}>
+                          <div className="flex items-center gap-2">
+                            Rating
+                            {sortConfig.key === 'avgRating' && (
+                              <span className="text-indigo-500">
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className={`px-6 py-4 text-center text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
+                          Performance
+                        </th>
+                        <th className={`px-6 py-4 text-center text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700/20">
+                      {filteredUsers.map(user => (
+                        <React.Fragment key={user.id}>
+                          <tr className={`${theme.hover} transition-all duration-200`}>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              {editingId === user.id ? (
+                                <input
+                                  type="text"
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full font-medium`}
+                                />
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden shadow-md">
+                                    <span className="text-white font-bold text-sm">{user.avatar || user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold block">{user.name}</span>
+                                    <span className={`text-xs ${theme.subtext}`}>{user.totalCalls || 0} calls</span>
+                                  </div>
                                 </div>
-                                <div className="overflow-x-auto">
-                                  <table className={`min-w-full rounded-xl overflow-hidden`}>
-                                    <thead className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-indigo-100'}`}>
-                                      <tr>
-                                        <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Call ID</th>
-                                        <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Date</th>
-                                        <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Duration</th>
-                                        <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Rating</th>
-                                        <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Sentiment</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/30' : 'divide-gray-200'} ${isDarkMode ? 'bg-slate-900/30' : 'bg-white'}`}>
-                                      {user.calls && user.calls.slice(0, 3).map(call => (
-                                        <tr key={call.id} className={`${theme.hover} transition-all duration-200`}>
-                                          <td className={`px-5 py-4 text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} font-bold`}>{call.id}</td>
-                                          <td className="px-5 py-4 text-sm font-medium">{call.date}</td>
-                                          <td className="px-5 py-4 text-sm font-medium">{call.duration}</td>
-                                          <td className="px-5 py-4 text-sm">
-                                            <div className="flex items-center gap-1">
-                                              <StarIcon filled={true} className="text-yellow-400" />
-                                              <span className="font-bold">{call.rating}</span>
-                                            </div>
-                                          </td>
-                                          <td className="px-5 py-4 text-sm">
-                                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
-                                              call.sentiment === 'Positive' ? 'bg-green-500/20 text-green-500' :
-                                              call.sentiment === 'Very Positive' ? 'bg-green-600/20 text-green-600' :
-                                              call.sentiment === 'Neutral' ? 'bg-yellow-500/20 text-yellow-500' :
-                                              'bg-red-500/20 text-red-500'
-                                            }`}>
-                                              {call.sentiment}
-                                            </span>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200'} flex justify-between items-center`}>
-                                  <span className={`text-sm ${theme.subtext}`}>Showing {Math.min(3, user.calls?.length || 0)} of {user.calls?.length || 0} calls</span>
-                                  <button
-                                    onClick={() => handleViewDashboard(user.id)}
-                                    className={`${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-500'} transition-colors flex items-center font-semibold`}
-                                  >
-                                    View All Performance Data
-                                    <ChevronRightIcon className="ml-1" />
-                                  </button>
-                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              {editingId === user.id ? (
+                                <input
+                                  type="email"
+                                  value={editEmail}
+                                  onChange={(e) => setEditEmail(e.target.value)}
+                                  className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full font-medium`}
+                                />
+                              ) : (
+                                <div className="text-sm font-medium">{user.email}</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              {editingId === user.id ? (
+                                <select
+                                  value={editRole}
+                                  onChange={(e) => setEditRole(e.target.value)}
+                                  className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium`}
+                                >
+                                  <option value="candidate">Candidate</option>
+                                  <option value="supervisor">Supervisor</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                              ) : (
+                                <div className="text-sm font-medium capitalize">{user.role}</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              <span className={`px-3 py-1.5 text-xs font-bold rounded-full ${
+                                user.status === 'Active' 
+                                  ? 'bg-green-500/20 text-green-500' 
+                                  : 'bg-red-500/20 text-red-500'
+                              }`}>
+                                {user.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              <div className="flex items-center gap-1">
+                                <StarIcon filled={true} className={`${
+                                  (user.avgRating || 0) >= 4.5 ? 'text-yellow-400' : 
+                                  (user.avgRating || 0) >= 4.0 ? 'text-yellow-500' : 
+                                  (user.avgRating || 0) >= 3.5 ? 'text-orange-500' : 
+                                  'text-orange-600'
+                                }`} />
+                                <span className="font-bold text-sm">{(user.avgRating || 0).toFixed(1)}</span>
                               </div>
                             </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <span className={`text-sm font-semibold ${
+                                  user.improvementRate?.startsWith('+') ? 'text-green-500' : 
+                                  user.improvementRate?.startsWith('-') ? 'text-red-500' : 
+                                  'text-gray-500'
+                                }`}>
+                                  {user.improvementRate || '0%'}
+                                </span>
+                                <button
+                                  onClick={() => toggleCalls(user.id)}
+                                  className={`${isDarkMode ? 'text-indigo-400 hover:bg-indigo-400/10' : 'text-indigo-600 hover:bg-indigo-600/10'} flex items-center gap-1 transition-all duration-200 px-2 py-1 rounded-lg text-xs font-medium`}
+                                  title="View Call History"
+                                >
+                                  <PhoneIcon className="w-3 h-3" />
+                                  {user.calls ? user.calls.length : 0}
+                                  {expandedCalls[user.id] ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-center">
+                              {editingId === user.id ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={handleSaveEdit}
+                                    disabled={isLoading}
+                                    className={`text-green-500 hover:bg-green-500/10 rounded-lg p-2 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Save"
+                                  >
+                                    {isLoading ? <LoaderIcon /> : <CheckIcon />}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    disabled={isLoading}
+                                    className={`text-red-500 hover:bg-red-500/10 rounded-lg p-2 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Cancel"
+                                  >
+                                    <CloseIcon />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleViewDashboard(user.id)}
+                                    className={`text-purple-500 hover:bg-purple-500/10 rounded-lg p-2 transition-all transform hover:scale-110`}
+                                    title="View Performance Dashboard"
+                                  >
+                                    <BarChartIcon />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditUser(user)}
+                                    disabled={isLoading}
+                                    className={`text-indigo-500 hover:bg-indigo-500/10 rounded-lg p-2 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Edit"
+                                  >
+                                    <EditIcon />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    disabled={isLoading}
+                                    className={`text-red-500 hover:bg-red-500/10 rounded-lg p-2 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Delete"
+                                  >
+                                    <DeleteIcon />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+
+                          {/* Call History Row */}
+                          {expandedCalls[user.id] && (
+                            <tr>
+                              <td colSpan="7" className="px-6 py-6">
+                                <div className={`${isDarkMode ? 'bg-indigo-900/10' : 'bg-indigo-50'} p-6 rounded-2xl shadow-inner border ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200'}`}>
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+                                    <p className={`text-lg font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                                      Recent Call History for {user.name}
+                                    </p>
+                                    <button
+                                      onClick={() => handleViewDashboard(user.id)}
+                                      className={`${isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-500'} flex items-center gap-2 font-semibold transition-colors px-4 py-2 rounded-lg hover:bg-purple-500/10`}
+                                    >
+                                      <BarChartIcon />
+                                      View Full Dashboard
+                                    </button>
+                                  </div>
+                                  
+                                  {user.calls && user.calls.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                      <table className={`min-w-full rounded-xl overflow-hidden`}>
+                                        <thead className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-indigo-100'}`}>
+                                          <tr>
+                                            <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Call ID</th>
+                                            <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Date</th>
+                                            <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Duration</th>
+                                            <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Rating</th>
+                                            <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Sentiment</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/30' : 'divide-gray-200'} ${isDarkMode ? 'bg-slate-900/30' : 'bg-white'}`}>
+                                          {user.calls.slice(0, 3).map(call => (
+                                            <tr key={call.id} className={`${theme.hover} transition-all duration-200`}>
+                                              <td className={`px-5 py-4 text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} font-bold`}>{call.id}</td>
+                                              <td className="px-5 py-4 text-sm font-medium">{call.date}</td>
+                                              <td className="px-5 py-4 text-sm font-medium">{call.duration}</td>
+                                              <td className="px-5 py-4 text-sm">
+                                                <div className="flex items-center gap-1">
+                                                  <StarIcon filled={true} className="text-yellow-400" />
+                                                  <span className="font-bold">{call.rating}</span>
+                                                </div>
+                                              </td>
+                                              <td className="px-5 py-4 text-sm">
+                                                <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                                                  call.sentiment === 'Positive' ? 'bg-green-500/20 text-green-500' :
+                                                  call.sentiment === 'Very Positive' ? 'bg-green-600/20 text-green-600' :
+                                                  call.sentiment === 'Neutral' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                  'bg-red-500/20 text-red-500'
+                                                }`}>
+                                                  {call.sentiment}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <div className={`text-center py-8 ${theme.subtext}`}>
+                                      <PhoneIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                      <p>No call history available</p>
+                                      <p className="text-sm mt-1">Call history will appear here after analyses are completed</p>
+                                    </div>
+                                  )}
+                                  
+                                  <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200'} flex justify-between items-center`}>
+                                    <span className={`text-sm ${theme.subtext}`}>
+                                      Showing {Math.min(3, user.calls?.length || 0)} of {user.calls?.length || 0} calls
+                                    </span>
+                                    <button
+                                      onClick={() => handleViewDashboard(user.id)}
+                                      className={`${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-500'} transition-colors flex items-center font-semibold`}
+                                    >
+                                      View All Performance Data
+                                      <ChevronRightIcon className="ml-1" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -746,7 +924,8 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
             <div className="absolute right-0 top-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-t-3xl"></div>
             <button
               onClick={() => setShowAddModal(false)}
-              className={`absolute top-6 right-6 ${theme.text} hover:text-gray-400 transition-colors p-2 hover:bg-white/10 rounded-lg`}
+              disabled={isLoading}
+              className={`absolute top-6 right-6 ${theme.text} hover:text-gray-400 transition-colors p-2 hover:bg-white/10 rounded-lg ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <CloseIcon />
             </button>
@@ -756,42 +935,60 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
             </h3>
             <div className="space-y-5">
               <div>
-                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Name</label>
+                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Name *</label>
                 <input
                   type="text"
-                  placeholder="Enter name"
+                  placeholder="Enter full name"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser(prev => ({...prev, name: e.target.value}))}
                   className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
+                  disabled={isLoading}
                 />
               </div>
               <div>
-                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Email</label>
+                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Email *</label>
                 <input
                   type="email"
-                  placeholder="Enter email"
+                  placeholder="Enter email address"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser(prev => ({...prev, email: e.target.value}))}
                   className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
+                  disabled={isLoading}
                 />
               </div>
               <div>
                 <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Role</label>
-                <select className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}>
-                  <option value="Agent">Agent</option>
-                  <option value="Supervisor">Supervisor</option>
-                  <option value="Admin">Admin</option>
+                <select 
+                  value={newUser.role}
+                  onChange={(e) => setNewUser(prev => ({...prev, role: e.target.value}))}
+                  className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
+                  disabled={isLoading}
+                >
+                  <option value="candidate">Candidate</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-4 mt-8">
               <button
                 onClick={() => setShowAddModal(false)}
-                className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.hover} font-semibold transition-all`}
+                disabled={isLoading}
+                className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.hover} font-semibold transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddUser}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+                disabled={isLoading || !newUser.name.trim() || !newUser.email.trim()}
+                className={`flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  isLoading || !newUser.name.trim() || !newUser.email.trim() 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:shadow-lg'
+                }`}
               >
-                Add User
+                {isLoading ? <LoaderIcon /> : <PlusIcon />}
+                {isLoading ? 'Creating...' : 'Add User'}
               </button>
             </div>
           </div>

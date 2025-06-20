@@ -1,4 +1,4 @@
-// Updated App.js - With Enhanced Dashboard and UserDashboard
+// Updated App.js - With Enhanced Dashboard and UserDashboard + SessionId Fix
 import React, { useState } from 'react';
 import './App.css';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -6,7 +6,7 @@ import { UserProvider } from './contexts/UserContext';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import UserManagement from './components/UserManagement';
-import UserDashboard from './components/UserDashboard'; // Add this import
+import UserDashboard from './components/UserDashboard';
 import UploadAudio from './components/UploadAudio';
 import FeedbackSessions from './components/FeedbackSessions';
 import Analytics from './components/Analytics';
@@ -24,7 +24,8 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState('login');
   const [activeTab, setActiveTab] = useState('overview');
   const [currentFeedback, setCurrentFeedback] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null); // Add this state
+  const [currentSessionId, setCurrentSessionId] = useState(null); // ADD THIS STATE
+  const [selectedUserId, setSelectedUserId] = useState(null);
   
   const [users] = useState([
     { id: 1, name: 'John Doe', email: 'john@example.com' },
@@ -32,10 +33,31 @@ function AppContent() {
     { id: 3, name: 'Peter Jones', email: 'peter@example.com' }
   ]);
 
-  const navigateToFeedbackDetail = (feedbackData) => {
+  // FIXED: Update navigateToFeedbackDetail to accept both parameters
+  const navigateToFeedbackDetail = (feedbackData, sessionId) => {
+    console.log('🧭 App: navigateToFeedbackDetail called with:', { 
+      feedbackData: feedbackData ? 'Present' : 'Not present', 
+      sessionId 
+    });
+    
+    // Validate that we have either feedbackData or sessionId
+    if (!feedbackData && !sessionId) {
+      console.error('❌ App: No feedbackData or sessionId provided to navigateToFeedbackDetail');
+      alert('Error: No session data provided for navigation');
+      return;
+    }
+    
+    // Set both states
     setCurrentFeedback(feedbackData);
+    setCurrentSessionId(sessionId); // ADD THIS LINE
     setCurrentPage('feedback-detail');
     setActiveTab('feedback');
+    
+    console.log('✅ App: Navigation states set:', {
+      currentPage: 'feedback-detail',
+      currentSessionId: sessionId,
+      currentFeedback: feedbackData ? 'Present' : 'Not present'
+    });
   };
 
   // Add this function to handle user dashboard navigation
@@ -45,12 +67,28 @@ function AppContent() {
     setActiveTab('users');
   };
 
+  // Function to navigate back and clear states
+  const navigateBack = (pageName) => {
+    console.log('🔙 App: Navigating back to:', pageName);
+    setCurrentPage(pageName);
+    setCurrentFeedback(null);
+    setCurrentSessionId(null); // Clear session ID when navigating back
+  };
+
   // Automatically redirect to dashboard if authenticated
   React.useEffect(() => {
     if (isAuthenticated && currentPage === 'login') {
       setCurrentPage('dashboard');
     }
   }, [isAuthenticated, currentPage]);
+
+  // Debug current app state
+  console.log('🔍 App current state:', {
+    currentPage,
+    currentSessionId,
+    hasCurrentFeedback: !!currentFeedback,
+    selectedUserId
+  });
 
   const renderPage = () => {
     // Show landing page if not authenticated
@@ -70,6 +108,31 @@ function AppContent() {
         <div className="transition-all duration-300">
           {renderMainContent()}
         </div>
+        
+        {/* Add debug panel in development mode */}
+        {/* {process.env.NODE_ENV === 'development' && (
+          <div className="fixed bottom-4 right-4 bg-black/90 text-white p-4 rounded-lg text-sm max-w-xs">
+            <div className="font-bold mb-2 text-yellow-400">🔍 Navigation Debug</div>
+            <div className="space-y-1 text-xs">
+              <div>Page: <span className="text-green-400">{currentPage}</span></div>
+              <div>Session ID: <span className="text-blue-400">{currentSessionId || 'None'}</span></div>
+              <div>Feedback: <span className="text-purple-400">{currentFeedback ? 'Present' : 'None'}</span></div>
+              <div>User ID: <span className="text-orange-400">{selectedUserId || 'None'}</span></div>
+            </div>
+            <button 
+              onClick={() => console.log('🔍 Full App State:', {
+                currentPage,
+                currentSessionId,
+                currentFeedback,
+                selectedUserId,
+                activeTab
+              })}
+              className="mt-2 px-2 py-1 bg-blue-600 rounded text-xs w-full"
+            >
+              Log Full State
+            </button>
+          </div>
+        )} */}
       </div>
     );
   };
@@ -87,9 +150,9 @@ function AppContent() {
           setCurrentPage={setCurrentPage} 
           users={users} 
           isDarkMode={isDarkMode}
-          navigateToUserDashboard={navigateToUserDashboard} // Add this prop
+          navigateToUserDashboard={navigateToUserDashboard}
         />;
-      case 'user-dashboard': // Add this case
+      case 'user-dashboard':
         return <UserDashboard 
           userId={selectedUserId}
           setCurrentPage={setCurrentPage}
@@ -111,8 +174,9 @@ function AppContent() {
         />;
       case 'feedback-detail':
         return <FeedbackDetail 
-          setCurrentPage={setCurrentPage} 
+          setCurrentPage={navigateBack} // Use navigateBack instead of setCurrentPage
           feedbackData={currentFeedback}
+          sessionId={currentSessionId} // ADD THIS PROP - This was missing!
           isDarkMode={isDarkMode}
         />;
       case 'analytics':
