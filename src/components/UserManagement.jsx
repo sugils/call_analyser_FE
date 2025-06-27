@@ -1,5 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import apiService from './apiService';
+import { 
+  Phone, 
+  Star, 
+  ChevronRight, 
+  Users2, 
+  BarChart4, 
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Award,
+  Eye,
+  LayoutDashboard,
+  Target,
+  CheckCircle,
+  XCircle,
+  Calendar,
+  Clock,
+  Loader,
+  RefreshCw,
+  Building2,
+  Crown,
+  Shield,
+  Activity,
+  PieChart,
+  Zap,
+  ArrowUp,
+  ArrowDown,
+  Minus
+} from 'lucide-react';
 
 // Modern Icon Components
 const EditIcon = () => (
@@ -91,13 +120,6 @@ const UsersIcon = () => (
   </svg>
 );
 
-const EyeIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
 const BarChartIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="12" y1="20" x2="12" y2="10" />
@@ -107,9 +129,7 @@ const BarChartIcon = () => (
 );
 
 const LoaderIcon = () => (
-  <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 12a9 9 0 11-6.219-8.56" />
-  </svg>
+  <Loader className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-500" />
 );
 
 const AlertTriangleIcon = () => (
@@ -128,22 +148,50 @@ const RefreshIcon = () => (
   </svg>
 );
 
+const UploadIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
+const TeamIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+  </svg>
+);
+
+const FileTextIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
 const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
   // State for dynamic data
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [teamLeads, setTeamLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   // UI state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editRole, setEditRole] = useState('');
+  const [editTeam, setEditTeam] = useState('');
+  const [editTeamLead, setEditTeamLead] = useState('');
   const [expandedCalls, setExpandedCalls] = useState({});
-  const [activeTab, setActiveTab] = useState('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
@@ -152,8 +200,25 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'candidate'
+    role: 'trainee_recruiter',
+    team_id: '',
+    team_lead_id: ''
   });
+
+  // Bulk upload state
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResults, setUploadResults] = useState(null);
+
+  // Role options (including team lead roles)
+  const roleOptions = [
+    { value: 'trainee_recruiter', label: 'Trainee Recruiter' },
+    { value: 'recruiter', label: 'Recruiter' },
+    { value: 'senior_recruiter', label: 'Senior Recruiter' },
+    { value: 'lead_recruiter', label: 'Lead Recruiter' },
+    { value: 'team_lead_ii', label: 'Team Lead - II' },
+    { value: 'team_lead_i', label: 'Team Lead - I' }
+  ];
 
   // Fetch users from backend
   const fetchUsers = async () => {
@@ -176,9 +241,37 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     }
   };
 
-  // Load users on component mount
+  // Fetch teams
+  const fetchTeams = async () => {
+    try {
+      const teamsData = await apiService.getTeams();
+      setTeams(teamsData);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    }
+  };
+
+  // Fetch team leads
+  const fetchTeamLeads = async () => {
+    try {
+      const teamLeadsData = await apiService.getTeamLeads();
+      setTeamLeads(teamLeadsData);
+    } catch (error) {
+      console.error('Error fetching team leads:', error);
+    }
+  };
+
+  // Load data on component mount
   useEffect(() => {
-    fetchUsers();
+    const loadData = async () => {
+      await Promise.all([
+        fetchUsers(),
+        fetchTeams(),
+        fetchTeamLeads()
+      ]);
+    };
+    
+    loadData();
     
     // Set up auto-refresh every 2 minutes
     const refreshInterval = setInterval(fetchUsers, 2 * 60 * 1000);
@@ -196,7 +289,9 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     const results = users.filter(user =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase())
+      user.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.team_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.team_lead_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredUsers(results);
   }, [searchQuery, users]);
@@ -244,7 +339,13 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
       setUsers(prev => [formattedUser, ...prev]);
       
       // Reset form and close modal
-      setNewUser({ name: '', email: '', role: 'candidate' });
+      setNewUser({ 
+        name: '', 
+        email: '', 
+        role: 'trainee_recruiter', 
+        team_id: '', 
+        team_lead_id: '' 
+      });
       setShowAddModal(false);
       
       // Show success message
@@ -253,6 +354,45 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     } catch (error) {
       console.error('Error creating user:', error);
       alert('Failed to create user: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Bulk upload users
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      alert('Please select a CSV file');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setUploadProgress(0);
+      
+      const results = await apiService.bulkUploadUsers(uploadFile, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      setUploadResults(results);
+      
+      // Refresh users list
+      await fetchUsers();
+      
+      // Reset upload state
+      setUploadFile(null);
+      setUploadProgress(0);
+      
+    } catch (error) {
+      console.error('Error uploading users:', error);
+      alert('Failed to upload users: ' + error.message);
+      setUploadResults({ 
+        success: false, 
+        error: error.message,
+        created: 0,
+        failed: 0,
+        errors: []
+      });
     } finally {
       setIsLoading(false);
     }
@@ -287,6 +427,8 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     setEditName(user.name);
     setEditEmail(user.email);
     setEditRole(user.role);
+    setEditTeam(user.team_id || '');
+    setEditTeamLead(user.team_lead_id || '');
   };
 
   // Save edit
@@ -297,7 +439,9 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
       const updatedUser = await apiService.updateUser(editingId, {
         name: editName,
         email: editEmail,
-        role: editRole
+        role: editRole,
+        team_id: editTeam || null,
+        team_lead_id: editTeamLead || null
       });
       
       // Update local state
@@ -309,6 +453,8 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
       setEditName('');
       setEditEmail('');
       setEditRole('');
+      setEditTeam('');
+      setEditTeamLead('');
       
       alert('User updated successfully!');
       
@@ -326,6 +472,8 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     setEditName('');
     setEditEmail('');
     setEditRole('');
+    setEditTeam('');
+    setEditTeamLead('');
   };
 
   // Toggle call history
@@ -357,6 +505,24 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
     setSortConfig({ key, direction });
   };
 
+  // File upload handler
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      setUploadFile(file);
+      setUploadResults(null);
+    } else {
+      alert('Please select a valid CSV file');
+      event.target.value = '';
+    }
+  };
+
+  // Get role display name
+  const getRoleDisplayName = (role) => {
+    const roleOption = roleOptions.find(option => option.value === role);
+    return roleOption ? roleOption.label : role;
+  };
+
   // Theme configuration
   const themes = {
     dark: {
@@ -380,23 +546,22 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
   const theme = isDarkMode ? themes.dark : themes.light;
 
   // Loading state
-  if (isLoading && !lastUpdated) {
-    return (
-      <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans transition-colors duration-300`}>
-        <div className="ml-20 lg:ml-64 min-h-screen">
-          <div className="p-8 lg:p-10">
+    // Loading state
+    if (isLoading && !lastUpdated) {
+      return (
+        <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans overflow-hidden transition-colors duration-300`}>
+          <div className="ml-20 lg:ml-64 p-6">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
-                <LoaderIcon className="w-12 h-12 mx-auto mb-4 text-indigo-500" />
-                <h3 className="text-xl font-semibold mb-2">Loading Users</h3>
-                <p className={theme.subtext}>Fetching user data from server...</p>
+                <Loader className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-500" />
+                <h3 className="text-xl font-semibold mb-2">Loading User Details</h3>
+                <p className={theme.subtext}>Fetching latest User data...</p>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
   // Error state
   if (error && !lastUpdated) {
@@ -440,7 +605,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                 )}
               </h2>
               <p className={`${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} mt-2 text-lg`}>
-                Manage users and analyze their performance
+                Manage recruiters and analyze their performance
               </p>
             </div>
             <div className="flex items-center gap-4 w-full lg:w-auto">
@@ -465,6 +630,13 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                 title="Refresh Data"
               >
                 <RefreshIcon className={isLoading ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => setShowBulkUploadModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-xl transform hover:scale-105 transition-all whitespace-nowrap font-semibold"
+              >
+                <UploadIcon />
+                <span className="hidden md:inline">Bulk Upload</span>
               </button>
               <button
                 onClick={() => setShowAddModal(true)}
@@ -499,7 +671,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                   <div>
                     <p className={`${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} text-sm font-semibold uppercase tracking-wider`}>Total Users</p>
                     <p className={`text-5xl font-bold mt-3 flex items-end ${isDarkMode ? '' : 'text-gray-800'}`}>
-                      {filteredUsers.length}
+                      {users.length}
                       <span className={`${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'} text-xl ml-2 font-medium`}>users</span>
                     </p>
                   </div>
@@ -543,28 +715,28 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
               </div>
             </div>
 
-            {/* Average Rating */}
-            <div className={`${isDarkMode ? 'bg-gradient-to-br from-pink-600/10 to-red-600/10 backdrop-blur-sm border border-pink-500/20' : 'bg-white border border-pink-100 shadow-lg'} rounded-2xl p-7 relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]`}>
-              <div className={`absolute -right-12 -bottom-12 w-48 h-48 bg-pink-600 rounded-full ${isDarkMode ? 'opacity-10 group-hover:opacity-20' : 'opacity-5 group-hover:opacity-10'} transition-opacity duration-300`}></div>
+            {/* Teams */}
+            <div className={`${isDarkMode ? 'bg-gradient-to-br from-purple-600/10 to-pink-600/10 backdrop-blur-sm border border-purple-500/20' : 'bg-white border border-purple-100 shadow-lg'} rounded-2xl p-7 relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]`}>
+              <div className={`absolute -right-12 -bottom-12 w-48 h-48 bg-purple-600 rounded-full ${isDarkMode ? 'opacity-10 group-hover:opacity-20' : 'opacity-5 group-hover:opacity-10'} transition-opacity duration-300`}></div>
               <div className="relative z-10">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className={`${isDarkMode ? 'text-pink-300' : 'text-pink-600'} text-sm font-semibold uppercase tracking-wider`}>Average Rating</p>
+                    <p className={`${isDarkMode ? 'text-purple-300' : 'text-purple-600'} text-sm font-semibold uppercase tracking-wider`}>Active Teams</p>
                     <p className={`text-5xl font-bold mt-3 flex items-end ${isDarkMode ? '' : 'text-gray-800'}`}>
-                      {filteredUsers.length > 0 ? (filteredUsers.reduce((acc, user) => acc + (user.avgRating || 0), 0) / filteredUsers.length).toFixed(1) : '0.0'}
-                      <span className={`${isDarkMode ? 'text-pink-400' : 'text-pink-500'} text-xl ml-2 font-medium`}>/ 5.0</span>
+                      {teams.length}
+                      <span className={`${isDarkMode ? 'text-purple-400' : 'text-purple-500'} text-xl ml-2 font-medium`}>teams</span>
                     </p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-pink-600 to-red-600 rounded-2xl shadow-lg group-hover:shadow-pink-500/30 transition-all duration-300 group-hover:scale-110">
-                    <StarIcon filled={true} className="text-white w-6 h-6" />
+                  <div className="p-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl shadow-lg group-hover:shadow-purple-500/30 transition-all duration-300 group-hover:scale-110">
+                    <TeamIcon className="text-white" />
                   </div>
                 </div>
                 <div className="mt-6 flex items-center gap-2">
                   <span className="text-green-500 text-sm font-semibold flex items-center bg-green-500/10 px-3 py-1 rounded-full">
                     <TrendUpIcon className="mr-1" />
-                    +0.3
+                    +2
                   </span>
-                  <span className={`${theme.subtext} text-xs`}>vs last month</span>
+                  <span className={`${theme.subtext} text-xs`}>new teams</span>
                 </div>
               </div>
             </div>
@@ -656,20 +828,16 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                             )}
                           </div>
                         </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
+                          Team
+                        </th>
+                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>
+                          Team Lead
+                        </th>
                         <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('status')}>
                           <div className="flex items-center gap-2">
                             Status
                             {sortConfig.key === 'status' && (
-                              <span className="text-indigo-500">
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider cursor-pointer`} onClick={() => requestSort('avgRating')}>
-                          <div className="flex items-center gap-2">
-                            Rating
-                            {sortConfig.key === 'avgRating' && (
                               <span className="text-indigo-500">
                                 {sortConfig.direction === 'ascending' ? '↑' : '↓'}
                               </span>
@@ -699,7 +867,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                               ) : (
                                 <div className="flex items-center gap-3">
                                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden shadow-md">
-                                    <span className="text-white font-bold text-sm">{user.avatar || user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}</span>
+                                    <span className="text-white font-bold text-sm">{user.avatar}</span>
                                   </div>
                                   <div>
                                     <span className="font-semibold block">{user.name}</span>
@@ -727,12 +895,50 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                                   onChange={(e) => setEditRole(e.target.value)}
                                   className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium`}
                                 >
-                                  <option value="candidate">Candidate</option>
-                                  <option value="supervisor">Supervisor</option>
-                                  <option value="admin">Admin</option>
+                                  {roleOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
                                 </select>
                               ) : (
-                                <div className="text-sm font-medium capitalize">{user.role}</div>
+                                <div className="text-sm font-medium">{getRoleDisplayName(user.role)}</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              {editingId === user.id ? (
+                                <select
+                                  value={editTeam}
+                                  onChange={(e) => setEditTeam(e.target.value)}
+                                  className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium`}
+                                >
+                                  <option value="">Select Team</option>
+                                  {teams.map(team => (
+                                    <option key={team.id} value={team.id}>
+                                      {team.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="text-sm font-medium">{user.team_name || '-'}</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              {editingId === user.id ? (
+                                <select
+                                  value={editTeamLead}
+                                  onChange={(e) => setEditTeamLead(e.target.value)}
+                                  className={`${theme.bg} ${theme.text} border ${theme.border} rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium`}
+                                >
+                                  <option value="">Select Team Lead</option>
+                                  {teamLeads.map(teamLead => (
+                                    <option key={teamLead.id} value={teamLead.id}>
+                                      {teamLead.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="text-sm font-medium">{user.team_lead_name || '-'}</div>
                               )}
                             </td>
                             <td className="px-6 py-5 whitespace-nowrap">
@@ -744,26 +950,17 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                                 {user.status}
                               </span>
                             </td>
-                            <td className="px-6 py-5 whitespace-nowrap">
-                              <div className="flex items-center gap-1">
-                                <StarIcon filled={true} className={`${
-                                  (user.avgRating || 0) >= 4.5 ? 'text-yellow-400' : 
-                                  (user.avgRating || 0) >= 4.0 ? 'text-yellow-500' : 
-                                  (user.avgRating || 0) >= 3.5 ? 'text-orange-500' : 
-                                  'text-orange-600'
-                                }`} />
-                                <span className="font-bold text-sm">{(user.avgRating || 0).toFixed(1)}</span>
-                              </div>
-                            </td>
                             <td className="px-6 py-5 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center gap-2">
-                                <span className={`text-sm font-semibold ${
-                                  user.improvementRate?.startsWith('+') ? 'text-green-500' : 
-                                  user.improvementRate?.startsWith('-') ? 'text-red-500' : 
-                                  'text-gray-500'
-                                }`}>
-                                  {user.improvementRate || '0%'}
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <StarIcon filled={true} className={`${
+                                    (user.avgRating || 0) >= 4.5 ? 'text-yellow-400' : 
+                                    (user.avgRating || 0) >= 4.0 ? 'text-yellow-500' : 
+                                    (user.avgRating || 0) >= 3.5 ? 'text-orange-500' : 
+                                    'text-orange-600'
+                                  }`} />
+                                  <span className="font-bold text-sm">{(user.avgRating || 0).toFixed(1)}</span>
+                                </div>
                                 <button
                                   onClick={() => toggleCalls(user.id)}
                                   className={`${isDarkMode ? 'text-indigo-400 hover:bg-indigo-400/10' : 'text-indigo-600 hover:bg-indigo-600/10'} flex items-center gap-1 transition-all duration-200 px-2 py-1 rounded-lg text-xs font-medium`}
@@ -799,7 +996,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => handleViewDashboard(user.id)}
-                                    className={`text-purple-500 hover:bg-purple-500/10 rounded-lg p-2 transition-all transform hover:scale-110`}
+                                    className="text-purple-500 hover:bg-purple-500/10 rounded-lg p-2 transition-all transform hover:scale-110"
                                     title="View Performance Dashboard"
                                   >
                                     <BarChartIcon />
@@ -828,7 +1025,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                           {/* Call History Row */}
                           {expandedCalls[user.id] && (
                             <tr>
-                              <td colSpan="7" className="px-6 py-6">
+                              <td colSpan="8" className="px-6 py-6">
                                 <div className={`${isDarkMode ? 'bg-indigo-900/10' : 'bg-indigo-50'} p-6 rounded-2xl shadow-inner border ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200'}`}>
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
                                     <p className={`text-lg font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
@@ -845,7 +1042,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                                   
                                   {user.calls && user.calls.length > 0 ? (
                                     <div className="overflow-x-auto">
-                                      <table className={`min-w-full rounded-xl overflow-hidden`}>
+                                      <table className="min-w-full rounded-xl overflow-hidden">
                                         <thead className={`${isDarkMode ? 'bg-slate-800/50' : 'bg-indigo-100'}`}>
                                           <tr>
                                             <th className={`px-5 py-3 text-left text-xs font-bold ${theme.subtext} uppercase tracking-wider`}>Call ID</th>
@@ -920,7 +1117,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 animate-fade-in backdrop-blur-sm">
-          <div className={`${theme.cardBg} rounded-3xl p-10 w-full max-w-md shadow-2xl transform scale-95 animate-modal-pop-in relative`}>
+          <div className={`${theme.cardBg} rounded-3xl p-10 w-full max-w-2xl shadow-2xl transform scale-95 animate-modal-pop-in relative max-h-[90vh] overflow-y-auto`}>
             <div className="absolute right-0 top-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-t-3xl"></div>
             <button
               onClick={() => setShowAddModal(false)}
@@ -933,7 +1130,7 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
               <PlusIcon className={`mr-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
               Add User
             </h3>
-            <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Name *</label>
                 <input
@@ -957,16 +1154,50 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                 />
               </div>
               <div>
-                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Role</label>
+                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Role *</label>
                 <select 
                   value={newUser.role}
                   onChange={(e) => setNewUser(prev => ({...prev, role: e.target.value}))}
                   className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
                   disabled={isLoading}
                 >
-                  <option value="candidate">Candidate</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="admin">Admin</option>
+                  {roleOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Team</label>
+                <select 
+                  value={newUser.team_id}
+                  onChange={(e) => setNewUser(prev => ({...prev, team_id: e.target.value}))}
+                  className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
+                  disabled={isLoading}
+                >
+                  <option value="">Select Team (Optional)</option>
+                  {teams.map(team => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className={`block text-sm font-bold ${theme.subtext} mb-2`}>Team Lead</label>
+                <select 
+                  value={newUser.team_lead_id}
+                  onChange={(e) => setNewUser(prev => ({...prev, team_lead_id: e.target.value}))}
+                  className={`w-full px-5 py-3 ${theme.bg} ${theme.text} border ${theme.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium`}
+                  disabled={isLoading}
+                >
+                  <option value="">Select Team Lead (Optional)</option>
+                  {teamLeads.map(teamLead => (
+                    <option key={teamLead.id} value={teamLead.id}>
+                      {teamLead.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -991,6 +1222,239 @@ const UserManagement = ({ setCurrentPage, navigateToUserDashboard }) => {
                 {isLoading ? 'Creating...' : 'Add User'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 animate-fade-in backdrop-blur-sm">
+          <div className={`${theme.cardBg} rounded-3xl p-10 w-full max-w-4xl shadow-2xl transform scale-95 animate-modal-pop-in relative max-h-[90vh] overflow-y-auto`}>
+            <div className="absolute right-0 top-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-t-3xl"></div>
+            <button
+              onClick={() => {
+                setShowBulkUploadModal(false);
+                setUploadFile(null);
+                setUploadResults(null);
+                setUploadProgress(0);
+              }}
+              disabled={isLoading}
+              className={`absolute top-6 right-6 ${theme.text} hover:text-gray-400 transition-colors p-2 hover:bg-white/10 rounded-lg ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <CloseIcon />
+            </button>
+            <h3 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-8 flex items-center`}>
+              <UploadIcon className={`mr-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+              Bulk Upload Users
+            </h3>
+
+            {!uploadResults ? (
+              <>
+                {/* Upload Instructions */}
+                <div className={`${isDarkMode ? 'bg-blue-900/20 border-blue-500/30' : 'bg-blue-50 border-blue-200'} p-6 rounded-2xl border mb-8`}>
+                  <h4 className={`text-lg font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'} mb-4 flex items-center`}>
+                    <FileTextIcon className="mr-2" />
+                    CSV Format Requirements
+                  </h4>
+                  <div className="space-y-3">
+                    <p className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} text-sm`}>
+                      Your CSV file should contain the following columns (first row should be headers):
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h5 className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'} mb-2`}>Required Columns:</h5>
+                        <ul className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} text-sm space-y-1`}>
+                          <li>• <code className="bg-black/20 px-2 py-1 rounded">name</code> - Full name</li>
+                          <li>• <code className="bg-black/20 px-2 py-1 rounded">email</code> - Email address</li>
+                          <li>• <code className="bg-black/20 px-2 py-1 rounded">role</code> - User role</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'} mb-2`}>Optional Columns:</h5>
+                        <ul className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} text-sm space-y-1`}>
+                          <li>• <code className="bg-black/20 px-2 py-1 rounded">team_name</code> - Team name</li>
+                          <li>• <code className="bg-black/20 px-2 py-1 rounded">team_lead_email</code> - Team lead email</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h5 className={`font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'} mb-2`}>Valid Role Values:</h5>
+                      <p className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} text-sm`}>
+                        {roleOptions.map(role => role.value).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Upload Area */}
+                <div className={`border-2 border-dashed ${theme.border} rounded-2xl p-8 text-center mb-6 ${uploadFile ? 'border-green-500 bg-green-500/10' : ''}`}>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="csv-upload"
+                    disabled={isLoading}
+                  />
+                  <label
+                    htmlFor="csv-upload"
+                    className={`cursor-pointer flex flex-col items-center gap-4 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className={`w-16 h-16 rounded-full ${uploadFile ? 'bg-green-500' : 'bg-purple-500'} flex items-center justify-center`}>
+                      {uploadFile ? (
+                        <CheckIcon className="text-white w-8 h-8" />
+                      ) : (
+                        <UploadIcon className="text-white w-8 h-8" />
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-lg font-semibold ${theme.text}`}>
+                        {uploadFile ? `Selected: ${uploadFile.name}` : 'Click to select CSV file'}
+                      </p>
+                      <p className={`${theme.subtext} text-sm mt-1`}>
+                        {uploadFile ? 'Click to select a different file' : 'or drag and drop your CSV file here'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Upload Progress */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-sm font-medium ${theme.text}`}>Uploading...</span>
+                      <span className={`text-sm ${theme.subtext}`}>{uploadProgress}%</span>
+                    </div>
+                    <div className={`w-full bg-gray-200 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : ''}`}>
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setShowBulkUploadModal(false);
+                      setUploadFile(null);
+                      setUploadResults(null);
+                      setUploadProgress(0);
+                    }}
+                    disabled={isLoading}
+                    className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.hover} font-semibold transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkUpload}
+                    disabled={isLoading || !uploadFile}
+                    className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                      isLoading || !uploadFile 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:shadow-lg'
+                    }`}
+                  >
+                    {isLoading ? <LoaderIcon /> : <UploadIcon />}
+                    {isLoading ? 'Processing...' : 'Upload Users'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Upload Results */
+              <div className="space-y-6">
+                <div className={`p-6 rounded-2xl border ${
+                  uploadResults.success 
+                    ? 'bg-green-500/10 border-green-500/30' 
+                    : 'bg-red-500/10 border-red-500/30'
+                }`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    {uploadResults.success ? (
+                      <CheckIcon className="text-green-500 w-6 h-6" />
+                    ) : (
+                      <AlertTriangleIcon className="text-red-500 w-6 h-6" />
+                    )}
+                    <h4 className={`text-lg font-bold ${
+                      uploadResults.success ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {uploadResults.success ? 'Upload Completed' : 'Upload Failed'}
+                    </h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-400">{uploadResults.created || 0}</p>
+                      <p className={`text-sm ${theme.subtext}`}>Users Created</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-red-400">{uploadResults.failed || 0}</p>
+                      <p className={`text-sm ${theme.subtext}`}>Failed</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-400">{uploadResults.total || 0}</p>
+                      <p className={`text-sm ${theme.subtext}`}>Total Processed</p>
+                    </div>
+                  </div>
+
+                  {uploadResults.message && (
+                    <p className={`${uploadResults.success ? 'text-green-300' : 'text-red-300'} text-sm`}>
+                      {uploadResults.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Error Details */}
+                {uploadResults.errors && uploadResults.errors.length > 0 && (
+                  <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border}`}>
+                    <h5 className={`font-bold ${theme.text} mb-4 flex items-center`}>
+                      <AlertTriangleIcon className="mr-2 text-red-500" />
+                      Error Details ({uploadResults.errors.length})
+                    </h5>
+                    <div className="max-h-60 overflow-y-auto space-y-2">
+                      {uploadResults.errors.map((error, index) => (
+                        <div key={index} className={`p-3 rounded-lg ${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} border ${isDarkMode ? 'border-red-500/30' : 'border-red-200'}`}>
+                          <p className={`text-sm font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                            Row {error.row}: {error.message}
+                          </p>
+                          {error.data && (
+                            <p className={`text-xs ${theme.subtext} mt-1`}>
+                              Data: {JSON.stringify(error.data)}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setShowBulkUploadModal(false);
+                      setUploadFile(null);
+                      setUploadResults(null);
+                      setUploadProgress(0);
+                    }}
+                    className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.hover} font-semibold transition-all`}
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUploadFile(null);
+                      setUploadResults(null);
+                      setUploadProgress(0);
+                    }}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-700 text-white rounded-xl font-semibold transition-all hover:shadow-lg"
+                  >
+                    Upload Another File
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

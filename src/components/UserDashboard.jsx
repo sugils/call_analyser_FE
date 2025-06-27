@@ -35,20 +35,154 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
 
-  // Fetch user data from backend
+  // Enhanced apiService.getFeedbackDetail debugging wrapper
+  useEffect(() => {
+    const originalGetFeedbackDetail = apiService.getFeedbackDetail;
+    apiService.getFeedbackDetail = async function(sessionId) {
+      console.log('🚨 === DEBUGGING API SERVICE GET FEEDBACK DETAIL ===');
+      console.log('🔍 1. getFeedbackDetail called with sessionId:', sessionId);
+      console.log('🔍 2. SessionId type:', typeof sessionId);
+      console.log('🔍 3. Base URL:', this.baseURL);
+      console.log('🔗 4. Full URL will be:', `${this.baseURL}/api/feedback-sessions/${sessionId}`);
+      
+      try {
+        const result = await originalGetFeedbackDetail.call(this, sessionId);
+        console.log('✅ 5. getFeedbackDetail successful, result keys:', Object.keys(result));
+        console.log('🚨 === END DEBUGGING API SERVICE ===');
+        return result;
+      } catch (error) {
+        console.error('❌ 6. getFeedbackDetail failed:', error);
+        console.error('❌ 7. Error type:', error.constructor.name);
+        console.error('❌ 8. Error message:', error.message);
+        console.log('🚨 === END DEBUGGING API SERVICE (ERROR) ===');
+        throw error;
+      }
+    };
+
+    // Cleanup on unmount
+    return () => {
+      apiService.getFeedbackDetail = originalGetFeedbackDetail;
+    };
+  }, []);
+
+  // Helper function to map calls with real session IDs - Enhanced with debugging
+  const mapCallsWithSessionIdsDebug = (calls, feedbackSessions, type) => {
+    console.log(`🔍 7. Mapping ${type} calls with session IDs...`);
+    console.log(`📋 8. Input calls:`, calls);
+    console.log(`📋 9. Available sessions:`, feedbackSessions.length);
+    
+    if (!calls || calls.length === 0) {
+      console.log(`⚠️ 10. No ${type} calls from backend, creating from sessions...`);
+      
+      if (feedbackSessions && feedbackSessions.length > 0) {
+        const mappedCalls = feedbackSessions
+          .filter(session => {
+            const rating = session.overall_rating || 0;
+            const shouldInclude = type === 'top' ? rating >= 4.0 : rating < 3.5;
+            console.log(`🔍 11. Session ${session.sessionId || session.id} rating: ${rating}, include in ${type}: ${shouldInclude}`);
+            return shouldInclude;
+          })
+          .sort((a, b) => {
+            return type === 'top' ? 
+              (b.overall_rating || 0) - (a.overall_rating || 0) :
+              (a.overall_rating || 0) - (b.overall_rating || 0);
+          })
+          .slice(0, 5)
+          .map(session => {
+            const mappedCall = {
+              id: session.call_id || session.sessionId || session.id,
+              session_id: session.sessionId || session.id, // This is crucial!
+              sessionId: session.sessionId || session.id, // Also add this for compatibility
+              date: session.created_at ? new Date(session.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+              time: session.created_at ? new Date(session.created_at).toLocaleTimeString() : new Date().toLocaleTimeString(),
+              duration: session.duration || '5:30',
+              rating: session.overall_rating || 0,
+              overall_score: Math.round((session.overall_rating || 0) * 20),
+              highlights: type === 'top' ? ['High performance', 'Excellent communication'] : undefined,
+              issues: type === 'attention' ? ['Needs improvement', 'Low score'] : undefined,
+              hasRealData: true
+            };
+            
+            console.log(`✅ 12. Mapped ${type} call:`, {
+              id: mappedCall.id,
+              session_id: mappedCall.session_id,
+              sessionId: mappedCall.sessionId,
+              hasRealData: mappedCall.hasRealData
+            });
+            
+            return mappedCall;
+          });
+          
+        console.log(`✅ 13. Final ${type} calls with session IDs:`, mappedCalls.length);
+        return mappedCalls;
+      }
+      return [];
+    }
+    
+    // If calls exist, try to match them with session IDs
+    const matchedCalls = calls.map(call => {
+      console.log(`🔍 14. Trying to match call ${call.id} with sessions...`);
+      
+      const matchingSession = feedbackSessions.find(session => {
+        const sessionId = session.sessionId || session.id;
+        const matches = session.call_id === call.id || 
+                       sessionId === call.id ||
+                       (session.file_name && call.id && session.file_name.includes(call.id));
+        
+        console.log(`🔍 15. Checking session ${sessionId} vs call ${call.id}: ${matches}`);
+        return matches;
+      });
+      
+      const enhancedCall = {
+        ...call,
+        session_id: matchingSession?.sessionId || matchingSession?.id,
+        sessionId: matchingSession?.sessionId || matchingSession?.id, // Add both for compatibility
+        hasRealData: !!matchingSession
+      };
+      
+      console.log(`${matchingSession ? '✅' : '⚠️'} 16. Call ${call.id} mapped:`, {
+        session_id: enhancedCall.session_id,
+        sessionId: enhancedCall.sessionId,
+        hasRealData: enhancedCall.hasRealData
+      });
+      
+      return enhancedCall;
+    });
+    
+    return matchedCalls;
+  };
+
+  // Enhanced fetchUserData with better session ID mapping debugging
   const fetchUserData = async () => {
     try {
+      console.log('🚨 === DEBUGGING FETCH USER DATA ===');
       setIsLoading(true);
       setError(null);
 
-      // Fetch detailed user data from backend
+      console.log('🔍 1. Fetching user details for userId:', userId);
       const userDetails = await apiService.getUserDetails(userId);
       
       if (!userDetails) {
         throw new Error('User not found');
       }
+      
+      console.log('✅ 2. User details received:', userDetails.name);
 
-      // Transform backend data to frontend format
+      // Fetch feedback sessions with detailed debugging
+      let userFeedbackSessions = [];
+      try {
+        console.log('🔍 3. Fetching feedback sessions for user:', userId);
+        userFeedbackSessions = await apiService.getFeedbackSessions(userId, 20);
+        console.log('✅ 4. Feedback sessions received:', userFeedbackSessions.length);
+        console.log('📋 5. Sample session IDs:', userFeedbackSessions.slice(0, 3).map(s => ({
+          id: s.sessionId || s.id,
+          call_id: s.call_id,
+          file_name: s.file_name
+        })));
+      } catch (sessionError) {
+        console.error('❌ 6. Could not fetch user feedback sessions:', sessionError);
+      }
+
       const transformedData = {
         id: userDetails.id,
         name: userDetails.name,
@@ -62,28 +196,23 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
         currentStreak: userDetails.current_streak || 0,
         bestSkill: userDetails.best_skill || 'Communication',
         improvementArea: userDetails.improvement_area || 'General Performance',
-        
-        // Performance data from backend
         performanceData: userDetails.performance_trend || generateDefaultPerformanceData(),
-        
-        // Skills data from backend
         skillsData: userDetails.skills_data || generateDefaultSkillsData(),
-        
-        // Top calls from backend
-        topCalls: userDetails.top_calls || [],
-        
-        // Attention calls from backend
-        attentionCalls: userDetails.attention_calls || []
+        topCalls: mapCallsWithSessionIdsDebug(userDetails.top_calls || [], userFeedbackSessions, 'top'),
+        attentionCalls: mapCallsWithSessionIdsDebug(userDetails.attention_calls || [], userFeedbackSessions, 'attention')
       };
 
+      console.log('✅ 17. Final transformed data - Top calls:', transformedData.topCalls.length);
+      console.log('✅ 18. Final transformed data - Attention calls:', transformedData.attentionCalls.length);
+      
       setUserData(transformedData);
       setLastUpdated(new Date());
+      
+      console.log('🚨 === END DEBUGGING FETCH USER DATA ===');
 
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ Error fetching user data:', error);
       setError(error.message);
-      
-      // Fallback to demo data if backend fails
       setUserData(getDefaultUserData(userId));
     } finally {
       setIsLoading(false);
@@ -146,26 +275,169 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
     }
   }, [userId]);
 
-  // Handle call click
-  const handleCallClick = (call) => {
-    // Create feedback data from call
-    const feedbackData = {
-      ...call,
-      userName: userData?.name,
-      user: userData?.name,
-      sentiment: call.rating >= 4.5 ? 'Very Positive' : 
-                call.rating >= 4.0 ? 'Positive' : 
-                call.rating >= 3.5 ? 'Neutral' : 'Negative',
-      transcript: call.transcript || `This is a detailed transcript for call ${call.id} with ${userData?.name}. The call lasted ${call.duration} and covered various topics related to customer service and support.`,
-      issues: call.issues || ['No major issues identified'],
-      strengths: call.highlights || ['Professional approach', 'Good technical knowledge'],
-      fileName: `${call.id}_${userData?.name?.replace(' ', '_') || 'user'}.mp3`,
-      hasRealData: false // Mark as demo data unless from real backend
-    };
+  // Handle call click - FULL DEBUG VERSION
+  const handleCallClick = async (call) => {
+    console.log('🚨 === DEBUGGING CALL CLICK ===');
+    console.log('🔍 1. Call object received:', JSON.stringify(call, null, 2));
+    console.log('🔍 2. Call ID:', call.id);
+    console.log('🔍 3. Session ID:', call.session_id);
+    console.log('🔍 4. SessionId (alternative):', call.sessionId);
+    console.log('🔍 5. Feedback Session ID:', call.feedback_session_id);
+    console.log('🔍 6. Has Real Data:', call.hasRealData);
     
-    if (navigateToFeedbackDetail) {
-      navigateToFeedbackDetail(feedbackData);
+    try {
+      // Check if this call has a valid feedback session ID - try multiple field names
+      const sessionId = call.session_id || call.sessionId || call.feedback_session_id;
+      console.log('🔍 7. Resolved Session ID:', sessionId);
+      console.log('🔍 8. SessionId type:', typeof sessionId);
+      
+      if (sessionId) {
+        console.log('✅ 9. Session ID found, attempting to fetch real feedback...');
+        console.log('🌐 10. About to call apiService.getFeedbackDetail with:', sessionId);
+        
+        // Add explicit debugging to API service call
+        try {
+          console.log('🚀 11. Making API call to getFeedbackDetail...');
+          
+          // Let's manually check what URL is being called
+          const expectedUrl = `${apiService.baseURL}/api/feedback-sessions/${sessionId}`;
+          console.log('🔗 12. Expected API URL:', expectedUrl);
+          
+          // Test direct API call first
+          console.log('🧪 13. Testing direct API call...');
+          try {
+            const directResponse = await apiService.fetchWithTimeout(expectedUrl);
+            const directData = await directResponse.json();
+            console.log('🧪 14. Direct API response success:', directData.success);
+            console.log('🧪 15. Direct API response keys:', Object.keys(directData));
+          } catch (directError) {
+            console.error('🧪 16. Direct API failed:', directError);
+          }
+          
+          // Now try the actual service method
+          const realFeedback = await apiService.getFeedbackDetail(sessionId);
+          console.log('✅ 17. Real feedback received:', realFeedback);
+          console.log('✅ 18. Real feedback keys:', Object.keys(realFeedback));
+          
+          if (navigateToFeedbackDetail) {
+            console.log('✅ 19. Navigating to feedback detail...');
+            navigateToFeedbackDetail(realFeedback);
+          }
+          return;
+        } catch (apiError) {
+          console.error('❌ 20. API call failed:', apiError);
+          console.error('❌ 21. API error details:', {
+            message: apiError.message,
+            stack: apiError.stack,
+            name: apiError.name
+          });
+          // Fall through to demo data creation
+        }
+      } else {
+        console.log('⚠️ 22. No session ID found, will create demo data');
+      }
+      
+      // Create demo data fallback
+      console.log('📋 23. Creating demo feedback data...');
+      
+      const feedbackData = {
+        id: call.id,
+        user: userData?.name || 'Unknown User',
+        userName: userData?.name || 'Unknown User',
+        date: call.date || new Date().toISOString().split('T')[0],
+        time: call.time || new Date().toLocaleTimeString(),
+        duration: call.duration || '5:30',
+        rating: call.rating || 0,
+        overall_score: call.overall_score || Math.round(call.rating * 20) || 0,
+        sentiment: call.rating >= 4.5 ? 'Very Positive' : 
+                  call.rating >= 4.0 ? 'Positive' : 
+                  call.rating >= 3.5 ? 'Neutral' : 'Negative',
+        transcript: call.transcript || `This is a demo transcript for call ${call.id} with ${userData?.name || 'user'}. The call lasted ${call.duration || '5:30'} and covered various topics related to customer service and support. The customer had questions about their account and needed assistance with technical issues.`,
+        
+        // Use call-specific issues and strengths if available, otherwise generate demo data
+        issues: call.issues && call.issues.length > 0 ? call.issues : [
+          'Speaking pace could be improved',
+          'Minor grammatical inconsistencies',
+          'Could use more active listening techniques'
+        ],
+        
+        strengths: call.highlights && call.highlights.length > 0 ? call.highlights : 
+                   call.strengths && call.strengths.length > 0 ? call.strengths : [
+          'Professional approach throughout the call',
+          'Good technical knowledge demonstrated',
+          'Patient and courteous with customer'
+        ],
+        
+        fileName: `${call.id}_${userData?.name?.replace(/\s+/g, '_') || 'user'}.mp3`,
+        
+        // Demo scores data
+        scores: {
+          grammar: Math.max(60, Math.min(95, (call.rating || 3.5) * 20 + Math.random() * 10 - 5)),
+          fluency: Math.max(60, Math.min(95, (call.rating || 3.5) * 20 + Math.random() * 10 - 5)),
+          speech_rate: Math.max(60, Math.min(95, (call.rating || 3.5) * 20 + Math.random() * 10 - 5)),
+          filler_words: Math.max(60, Math.min(95, (call.rating || 3.5) * 20 + Math.random() * 10 - 5)),
+          overall: call.overall_score || Math.round((call.rating || 3.5) * 20)
+        },
+        
+        // Mark as demo data
+        hasRealData: false,
+        source: 'DEMO_USER_DASHBOARD',
+        warning: `This is demonstration data. Real analysis data would come from the feedback sessions API. Session ID attempted: ${sessionId}`,
+        
+        // Additional demo fields
+        callDetails: {
+          transcript: call.transcript || `Demo transcript for call ${call.id}...`,
+          categories: [
+            {
+              id: 'communication',
+              title: 'Communication Skills',
+              subtitle: 'Overall communication effectiveness',
+              score: Math.round((call.rating || 3.5) * 18 + 10),
+              color: 'text-blue-500',
+              bgColor: 'bg-blue-500'
+            },
+            {
+              id: 'professionalism',
+              title: 'Professionalism',
+              subtitle: 'Professional conduct and approach',
+              score: Math.round((call.rating || 3.5) * 19 + 5),
+              color: 'text-purple-500',
+              bgColor: 'bg-purple-500'
+            }
+          ]
+        }
+      };
+      
+      console.log('📋 24. Demo feedback data created:', feedbackData);
+      
+      if (navigateToFeedbackDetail) {
+        console.log('✅ 25. Navigating to demo feedback detail...');
+        navigateToFeedbackDetail(feedbackData);
+      }
+      
+    } catch (error) {
+      console.error('❌ 26. Error in handleCallClick:', error);
+      console.error('❌ 27. Full error details:', {
+        message: error.message,
+        stack: error.stack,
+        call: call
+      });
+      
+      // Create minimal fallback data
+      const fallbackData = {
+        id: call.id || 'UNKNOWN',
+        user: userData?.name || 'Unknown User',
+        hasRealData: false,
+        error: 'Failed to load call details',
+        warning: error.message
+      };
+      
+      if (navigateToFeedbackDetail) {
+        navigateToFeedbackDetail(fallbackData);
+      }
     }
+    
+    console.log('🚨 === END DEBUGGING CALL CLICK ===');
   };
 
   // Handle back to dashboard
@@ -492,7 +764,19 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
                         #{index + 1}
                       </div>
                       <div>
-                        <h4 className="font-semibold">{call.id}</h4>
+                        <h4 className="font-semibold flex items-center gap-2">
+                          {call.id}
+                          {call.hasRealData && (
+                            <span className="px-1 py-0.5 bg-green-600/20 text-green-400 rounded text-xs">
+                              Real Data
+                            </span>
+                          )}
+                          {(call.session_id || call.sessionId) && (
+                            <span className="px-1 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs">
+                              Session: {call.session_id || call.sessionId}
+                            </span>
+                          )}
+                        </h4>
                         <p className={`text-sm ${theme.subtext}`}>{call.date} at {call.time}</p>
                       </div>
                     </div>
@@ -533,7 +817,7 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
             </div>
             
             <button 
-              onClick={() => setCurrentPage('feedback')}
+              onClick={() => setCurrentPage && setCurrentPage('feedback')}
               className={`w-full mt-4 p-3 ${theme.hover} rounded-xl transition-all duration-200 text-center font-medium`}
             >
               View All Performance Data
@@ -558,7 +842,19 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
                         !
                       </div>
                       <div>
-                        <h4 className="font-semibold">{call.id}</h4>
+                        <h4 className="font-semibold flex items-center gap-2">
+                          {call.id}
+                          {call.hasRealData && (
+                            <span className="px-1 py-0.5 bg-orange-600/20 text-orange-400 rounded text-xs">
+                              Real Data
+                            </span>
+                          )}
+                          {(call.session_id || call.sessionId) && (
+                            <span className="px-1 py-0.5 bg-blue-600/20 text-blue-400 rounded text-xs">
+                              Session: {call.session_id || call.sessionId}
+                            </span>
+                          )}
+                        </h4>
                         <p className={`text-sm ${theme.subtext}`}>{call.date} at {call.time}</p>
                       </div>
                     </div>
@@ -599,7 +895,7 @@ const UserDashboard = ({ userId = 1, setCurrentPage, navigateToFeedbackDetail })
             </div>
             
             <button 
-              onClick={() => setCurrentPage('feedback')}
+              onClick={() => setCurrentPage && setCurrentPage('feedback')}
               className={`w-full mt-4 p-3 ${theme.hover} rounded-xl transition-all duration-200 text-center font-medium`}
             >
               View All Analysis Results

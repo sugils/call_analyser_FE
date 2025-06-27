@@ -455,7 +455,7 @@ const FeedbackDetail = ({ setCurrentPage, feedbackData, sessionId, isDarkMode = 
             {/* {debugPanel} */}
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
-                <Loader className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-500" />
+                <Loader  className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-500" />
                 <h3 className="text-xl font-semibold mb-2">Loading Feedback Analysis</h3>
                 <p className={theme.subtext}>
                   SessionId: {sessionId || 'None'} | 

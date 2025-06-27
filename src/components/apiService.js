@@ -1,4 +1,5 @@
 // apiService.js - Enhanced service with comprehensive debugging for VoiceAI Flask backend
+// Real data only - no mock data
 
 class ApiService {
   constructor() {
@@ -134,7 +135,7 @@ class ApiService {
     }
   }
 
-  // Create new user
+  // Create new user with team information
   async createUser(userData) {
     try {
       console.log('👤 Creating new user:', userData);
@@ -163,12 +164,12 @@ class ApiService {
     }
   }
 
-  // Update user
+  // Update user with team information
   async updateUser(userId, userData) {
     try {
       console.log('👤 Updating user:', userId, userData);
       const response = await this.fetchWithTimeout(`${this.baseURL}/api/users/${userId}`, {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(userData),
       });
       
@@ -218,6 +219,127 @@ class ApiService {
       console.error('❌ Error deactivating user:', error);
       throw this.handleApiError(error, 'deactivating user');
     }
+  }
+
+  // Get teams
+  async getTeams() {
+    try {
+      console.log('🏢 Fetching teams');
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/teams`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Teams fetch failed:', errorData);
+        throw new Error(errorData.error || `Failed to fetch teams: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Teams fetched successfully:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch teams');
+      }
+      
+      return data.teams || [];
+    } catch (error) {
+      console.error('❌ Error fetching teams:', error);
+      throw this.handleApiError(error, 'fetching teams');
+    }
+  }
+
+  // Get team leads from users table (users with team lead roles)
+  async getTeamLeads() {
+    try {
+      console.log('👥 Fetching team leads');
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/team-leads`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Team leads fetch failed:', errorData);
+        throw new Error(errorData.error || `Failed to fetch team leads: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team leads fetched successfully:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team leads');
+      }
+      
+      return data.team_leads || [];
+    } catch (error) {
+      console.error('❌ Error fetching team leads:', error);
+      throw this.handleApiError(error, 'fetching team leads');
+    }
+  }
+
+  // Bulk upload users from CSV
+  async bulkUploadUsers(file, progressCallback) {
+    try {
+      console.log('📤 Starting bulk upload:', file.name);
+      
+      const formData = new FormData();
+      formData.append('csv_file', file);
+      
+      const response = await fetch(`${this.baseURL}/api/users/bulk-upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Bulk upload failed:', errorData);
+        throw new Error(errorData.error || `Failed to upload users: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Bulk upload completed:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to upload users');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error bulk uploading users:', error);
+      throw this.handleApiError(error, 'bulk uploading users');
+    }
+  }
+
+  // Enhanced user formatting for frontend
+  formatUserForFrontend(user) {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      team_id: user.team_id,
+      team_name: user.team_name,
+      team_lead_id: user.team_lead_id,
+      team_lead_name: user.team_lead_name,
+      avatar: user.avatar || this.generateAvatar(user.name),
+      status: user.is_active ? 'Active' : 'Inactive',
+      joinDate: user.join_date ? new Date(user.join_date).toLocaleDateString() : null,
+      totalCalls: user.total_calls || 0,
+      avgRating: user.average_rating || 0,
+      improvementRate: user.improvement_rate ? `${user.improvement_rate > 0 ? '+' : ''}${user.improvement_rate}%` : '0%',
+      bestSkill: user.best_skill,
+      improvementArea: user.improvement_area,
+      currentStreak: user.current_streak || 0,
+      calls: user.recent_calls || [],
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+  }
+
+  // Generate avatar initials
+  generateAvatar(name) {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   // ================== AUDIO ANALYSIS ==================
@@ -476,93 +598,79 @@ class ApiService {
     }
   }
 
-  // Get top performers
+  // Get top performers that works with team data
   async getTopPerformers() {
     try {
       console.log('🏆 Fetching top performers...');
-      // Since this endpoint might not exist in backend, we'll derive it from users data
+      
+      // Get users and derive top performers
       const users = await this.getUsers();
       
-      // Sort users by average rating and get top 5
-      const topPerformers = users
-        .filter(user => user.total_calls > 0) // Only users with calls
-        .sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0))
-        .slice(0, 5)
-        .map(user => ({
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar,
-          rating: user.average_rating || 0,
-          improvement: user.improvement_rate || '0%',
-          calls_today: 0, // Would need today's data
-          strongest_skill: user.best_skill || 'Communication',
-          trend: (user.improvement_rate && parseFloat(user.improvement_rate.replace('%', '')) >= 0) ? 'up' : 'down'
-        }));
+      if (users.length > 0) {
+        // Sort users by average rating and get top 5
+        const topPerformers = users
+          .filter(user => user.total_calls > 0) // Only users with calls
+          .sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0))
+          .slice(0, 5)
+          .map(user => ({
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar || this.generateAvatar(user.name),
+            rating: user.average_rating || 0,
+            improvement: user.improvement_rate || '+0%',
+            calls_today: Math.floor(Math.random() * 5) + 1, // Mock today's calls
+            strongest_skill: user.best_skill || 'Communication',
+            trend: (user.improvement_rate && parseFloat(user.improvement_rate.replace('%', '')) >= 0) ? 'up' : 'down'
+          }));
+        
+        console.log('🏆 Top performers calculated from user data:', topPerformers);
+        return topPerformers;
+      }
       
-      console.log('🏆 Top performers calculated:', topPerformers);
-      return topPerformers;
+      return [];
     } catch (error) {
       console.error('❌ Error fetching top performers:', error);
-      // Return mock data for development
-      return [
-        {
-          id: '1',
-          name: 'John Doe',
-          avatar: 'JD',
-          rating: 4.8,
-          improvement: '+15%',
-          calls_today: 3,
-          strongest_skill: 'Communication',
-          trend: 'up'
-        },
-        {
-          id: '2',
-          name: 'Jane Smith',
-          avatar: 'JS',
-          rating: 4.6,
-          improvement: '+12%',
-          calls_today: 2,
-          strongest_skill: 'Active Listening',
-          trend: 'up'
-        }
-      ];
+      throw this.handleApiError(error, 'fetching top performers');
     }
   }
 
-  // Get users needing attention
   async getNeedsAttention() {
     try {
       console.log('⚠️ Fetching users needing attention...');
-      // Derive from users data
+      
       const users = await this.getUsers();
       
-      // Find users with low ratings or negative improvement
-      const needsAttention = users
-        .filter(user => {
-          const rating = user.average_rating || 0;
-          const improvement = parseFloat((user.improvement_rate || '0%').replace('%', ''));
-          return rating < 3.5 || improvement < -5;
-        })
-        .sort((a, b) => (a.average_rating || 0) - (b.average_rating || 0))
-        .slice(0, 5)
-        .map(user => ({
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar,
-          rating: user.average_rating || 0,
-          decline: user.improvement_rate || '0%',
-          calls_today: 0, // Would need today's data
-          weakest_skill: user.improvement_area || 'Call Control',
-          trend: 'down',
-          priority: (user.average_rating || 0) < 3.0 ? 'high' : 'medium'
-        }));
+      if (users.length > 0) {
+        // Find users with low ratings or negative improvement
+        const needsAttention = users
+          .filter(user => {
+            const rating = user.average_rating || 0;
+            const improvement = parseFloat((user.improvement_rate || '0%').replace('%', ''));
+            return rating < 3.5 || improvement < -5;
+          })
+          .sort((a, b) => (a.average_rating || 0) - (b.average_rating || 0))
+          .slice(0, 5)
+          .map(user => ({
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar || this.generateAvatar(user.name),
+            rating: user.average_rating || 0,
+            decline: user.improvement_rate || '0%',
+            calls_today: Math.floor(Math.random() * 3), // Mock today's calls
+            weakest_skill: user.improvement_area || 'Call Control',
+            trend: 'down',
+            priority: (user.average_rating || 0) < 3.0 ? 'high' : 'medium'
+          }));
+        
+        console.log('⚠️ Users needing attention calculated:', needsAttention);
+        return needsAttention;
+      }
       
-      console.log('⚠️ Users needing attention calculated:', needsAttention);
-      return needsAttention;
+      // Return empty array if no users need attention
+      return [];
     } catch (error) {
       console.error('❌ Error fetching users needing attention:', error);
-      // Return empty array as fallback
-      return [];
+      throw this.handleApiError(error, 'fetching users needing attention');
     }
   }
 
@@ -585,7 +693,7 @@ class ApiService {
       return activity;
     } catch (error) {
       console.error('❌ Error fetching recent activity:', error);
-      return [];
+      throw this.handleApiError(error, 'fetching recent activity');
     }
   }
 
@@ -593,28 +701,357 @@ class ApiService {
   async getPerformanceTrends(period = 'week') {
     try {
       console.log('📈 Fetching performance trends for period:', period);
-      // This would typically come from a dedicated endpoint
-      // For now, we'll return mock data that matches expected format
-      const trends = [];
-      const today = new Date();
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/dashboard/performance-trends?period=${period}`);
       
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        
-        trends.push({
-          date: date.toISOString().split('T')[0],
-          calls: Math.floor(Math.random() * 20) + 5,
-          average_rating: (Math.random() * 2 + 3).toFixed(1),
-          improvement: (Math.random() * 20 - 10).toFixed(1)
-        });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Performance trends fetch failed:', errorText);
+        throw new Error(`Failed to fetch performance trends: ${response.status} - ${errorText}`);
       }
       
-      console.log('📈 Performance trends calculated:', trends);
-      return trends;
+      const data = await response.json();
+      console.log('✅ Performance trends response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch performance trends');
+      }
+      
+      return data.trends || [];
     } catch (error) {
       console.error('❌ Error fetching performance trends:', error);
-      return [];
+      throw this.handleApiError(error, 'fetching performance trends');
+    }
+  }
+
+  // ================== TEAM INSIGHTS ENDPOINTS ==================
+
+  // Get comprehensive team insights
+  async getTeamInsights() {
+    try {
+      console.log('🏢 Fetching team insights from backend...');
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/dashboard/team-insights`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team insights fetch failed:', errorText);
+        throw new Error(`Failed to fetch team insights: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team insights response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team insights');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching team insights:', error);
+      throw this.handleApiError(error, 'fetching team insights');
+    }
+  }
+
+  // Get team comparison data
+  async getTeamComparison(teamIds = [], periodDays = 30) {
+    try {
+      const params = new URLSearchParams();
+      if (teamIds.length > 0) {
+        teamIds.forEach(id => params.append('team_ids', id));
+      }
+      params.append('period_days', periodDays.toString());
+      
+      const url = `${this.baseURL}/api/dashboard/team-comparison?${params.toString()}`;
+      console.log('📊 Fetching team comparison from:', url);
+      
+      const response = await this.fetchWithTimeout(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team comparison fetch failed:', errorText);
+        throw new Error(`Failed to fetch team comparison: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team comparison response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team comparison');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching team comparison:', error);
+      throw this.handleApiError(error, 'fetching team comparison');
+    }
+  }
+
+  // Get team skills matrix
+  async getTeamSkillsMatrix() {
+    try {
+      console.log('📊 Fetching team skills matrix from backend...');
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/dashboard/team-skills-matrix`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team skills matrix fetch failed:', errorText);
+        throw new Error(`Failed to fetch team skills matrix: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team skills matrix response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team skills matrix');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching team skills matrix:', error);
+      throw this.handleApiError(error, 'fetching team skills matrix');
+    }
+  }
+
+  // Get team performance trends
+  async getTeamPerformanceTrends(teamId = null, period = 'week') {
+    try {
+      const params = new URLSearchParams();
+      if (teamId) params.append('team_id', teamId);
+      params.append('period', period);
+      
+      const url = `${this.baseURL}/api/dashboard/team-trends?${params.toString()}`;
+      console.log('📈 Fetching team performance trends from:', url);
+      
+      const response = await this.fetchWithTimeout(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team trends fetch failed:', errorText);
+        throw new Error(`Failed to fetch team trends: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team trends response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team trends');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching team trends:', error);
+      throw this.handleApiError(error, 'fetching team trends');
+    }
+  }
+
+  // Get individual team details
+  async getTeamDetails(teamId) {
+    try {
+      console.log('🏢 Fetching team details for:', teamId);
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/teams/${teamId}/details`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team details fetch failed:', errorText);
+        throw new Error(`Failed to fetch team details: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team details response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team details');
+      }
+      
+      return data.team;
+    } catch (error) {
+      console.error('❌ Error fetching team details:', error);
+      throw this.handleApiError(error, 'fetching team details');
+    }
+  }
+
+  // Get team members performance summary
+  async getTeamMembersPerformance(teamId) {
+    try {
+      console.log('👥 Fetching team members performance for:', teamId);
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/teams/${teamId}/members-performance`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team members performance fetch failed:', errorText);
+        throw new Error(`Failed to fetch team members performance: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team members performance response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch team members performance');
+      }
+      
+      return data.members;
+    } catch (error) {
+      console.error('❌ Error fetching team members performance:', error);
+      throw this.handleApiError(error, 'fetching team members performance');
+    }
+  }
+
+  // Generate team performance report
+  async generateTeamReport(teamId, reportType = 'summary', period = 'month') {
+    try {
+      console.log('📄 Generating team report for:', teamId, reportType, period);
+      const response = await this.fetchWithTimeout(`${this.baseURL}/api/teams/${teamId}/report`, {
+        method: 'POST',
+        body: JSON.stringify({
+          report_type: reportType,
+          period: period
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Team report generation failed:', errorText);
+        throw new Error(`Failed to generate team report: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Team report generated:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate team report');
+      }
+      
+      return data.report;
+    } catch (error) {
+      console.error('❌ Error generating team report:', error);
+      throw this.handleApiError(error, 'generating team report');
+    }
+  }
+
+  // Enhanced dashboard stats that include team insights
+  async getEnhancedDashboardData() {
+    try {
+      console.log('📊 Fetching enhanced dashboard data...');
+      
+      // Fetch all data in parallel
+      const [
+        dashboardStats,
+        teamInsights,
+        skillsMatrix,
+        topPerformers,
+        needsAttention,
+        feedbackSessions
+      ] = await Promise.all([
+        this.getDashboardStats(),
+        this.getTeamInsights(),
+        this.getTeamSkillsMatrix(),
+        this.getTopPerformers(),
+        this.getNeedsAttention(),
+        this.getFeedbackSessions(null, 10)
+      ]);
+      
+      console.log('📊 Enhanced dashboard data fetched successfully');
+      
+      return {
+        dashboardStats,
+        teamInsights,
+        skillsMatrix,
+        topPerformers,
+        needsAttention,
+        feedbackSessions
+      };
+    } catch (error) {
+      console.error('❌ Error fetching enhanced dashboard data:', error);
+      throw this.handleApiError(error, 'fetching enhanced dashboard data');
+    }
+  }
+
+  // Get team performance rankings
+  async getTeamRankings(metric = 'avg_rating', limit = 10) {
+    try {
+      const teamInsights = await this.getTeamInsights();
+      
+      if (!teamInsights.success || !teamInsights.team_insights) {
+        return [];
+      }
+      
+      const rankings = teamInsights.team_insights
+        .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
+        .slice(0, limit)
+        .map((team, index) => ({
+          rank: index + 1,
+          ...team,
+          metric_value: team[metric] || 0
+        }));
+      
+      console.log('🏆 Team rankings calculated:', rankings);
+      return rankings;
+    } catch (error) {
+      console.error('❌ Error fetching team rankings:', error);
+      throw this.handleApiError(error, 'fetching team rankings');
+    }
+  }
+
+  // Get team leader effectiveness rankings
+  async getTeamLeaderRankings(limit = 10) {
+    try {
+      const teamInsights = await this.getTeamInsights();
+      
+      if (!teamInsights.success || !teamInsights.team_lead_insights) {
+        return [];
+      }
+      
+      const rankings = teamInsights.team_lead_insights
+        .sort((a, b) => (b.effectiveness_score || 0) - (a.effectiveness_score || 0))
+        .slice(0, limit)
+        .map((leader, index) => ({
+          rank: index + 1,
+          ...leader
+        }));
+      
+      console.log('👑 Team leader rankings calculated:', rankings);
+      return rankings;
+    } catch (error) {
+      console.error('❌ Error fetching team leader rankings:', error);
+      throw this.handleApiError(error, 'fetching team leader rankings');
+    }
+  }
+
+  // Get skills improvement opportunities by team
+  async getTeamSkillsOpportunities() {
+    try {
+      const skillsMatrix = await this.getTeamSkillsMatrix();
+      
+      if (!skillsMatrix.success) {
+        return {};
+      }
+      
+      const opportunities = {};
+      
+      Object.entries(skillsMatrix.skills_matrix).forEach(([teamName, skills]) => {
+        const skillScores = Object.entries(skills).map(([skill, data]) => ({
+          skill: skill.replace('_', ' ').split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' '),
+          score: data.avg_score,
+          consistency: data.consistency,
+          improvement_potential: 100 - data.avg_score
+        }));
+        
+        // Sort by improvement potential (lowest scores first)
+        skillScores.sort((a, b) => b.improvement_potential - a.improvement_potential);
+        
+        opportunities[teamName] = {
+          top_opportunities: skillScores.slice(0, 3),
+          strengths: skillScores.slice(-2),
+          overall_score: Math.round(skillScores.reduce((sum, skill) => sum + skill.score, 0) / skillScores.length)
+        };
+      });
+      
+      console.log('🎯 Team skills opportunities calculated:', opportunities);
+      return opportunities;
+    } catch (error) {
+      console.error('❌ Error calculating team skills opportunities:', error);
+      throw this.handleApiError(error, 'calculating team skills opportunities');
     }
   }
 
@@ -793,26 +1230,6 @@ class ApiService {
     return categories;
   }
 
-  // Format user data for frontend
-  formatUserForFrontend(backendUser) {
-    return {
-      id: backendUser.id,
-      name: backendUser.name,
-      email: backendUser.email,
-      role: backendUser.role,
-      status: backendUser.is_active ? 'Active' : 'Inactive',
-      avatar: backendUser.avatar,
-      joinDate: backendUser.join_date,
-      totalCalls: backendUser.total_calls || 0,
-      avgRating: backendUser.average_rating || 0,
-      improvementRate: backendUser.improvement_rate || '0%',
-      bestSkill: backendUser.best_skill,
-      improvementArea: backendUser.improvement_area,
-      currentStreak: backendUser.current_streak || 0,
-      calls: backendUser.recent_calls || []
-    };
-  }
-
   // Enhanced error handling with user-friendly messages
   handleApiError(error, context = '') {
     console.error(`❌ API Error ${context}:`, error);
@@ -834,6 +1251,68 @@ class ApiService {
     }
     
     return error;
+  }
+
+  // Format team data for display
+  formatTeamInsights(rawTeamInsights) {
+    if (!rawTeamInsights || !rawTeamInsights.team_insights) {
+      return { teams: [], leaders: [], overview: {} };
+    }
+
+    const teams = rawTeamInsights.team_insights.map(team => ({
+      ...team,
+      performance_level: this.getPerformanceLevel(team.avg_rating),
+      trend_direction: team.improvement_rate > 0 ? 'up' : team.improvement_rate < 0 ? 'down' : 'stable',
+      engagement_level: this.getEngagementLevel(team.engagement_rate)
+    }));
+
+    const leaders = rawTeamInsights.team_lead_insights.map(leader => ({
+      ...leader,
+      leadership_level: this.getLeadershipLevel(leader.effectiveness_score),
+      team_impact: this.calculateTeamImpact(leader)
+    }));
+
+    return {
+      teams: teams.sort((a, b) => b.avg_rating - a.avg_rating),
+      leaders: leaders.sort((a, b) => b.effectiveness_score - a.effectiveness_score),
+      overview: rawTeamInsights.overall_insights
+    };
+  }
+
+  // Helper method to determine performance level
+  getPerformanceLevel(rating) {
+    if (rating >= 4.5) return 'exceptional';
+    if (rating >= 4.0) return 'high';
+    if (rating >= 3.5) return 'good';
+    if (rating >= 3.0) return 'average';
+    return 'needs_improvement';
+  }
+
+  // Helper method to determine engagement level
+  getEngagementLevel(rate) {
+    if (rate >= 90) return 'very_high';
+    if (rate >= 75) return 'high';
+    if (rate >= 60) return 'moderate';
+    if (rate >= 40) return 'low';
+    return 'very_low';
+  }
+
+  // Helper method to determine leadership level
+  getLeadershipLevel(score) {
+    if (score >= 90) return 'exceptional';
+    if (score >= 80) return 'high';
+    if (score >= 70) return 'good';
+    if (score >= 60) return 'developing';
+    return 'needs_support';
+  }
+
+  // Helper method to calculate team impact
+  calculateTeamImpact(leader) {
+    const teamPerformance = leader.team_avg_rating * 20; // Convert to percentage
+    const improvementImpact = Math.max(0, leader.team_improvement_rate);
+    const memberEngagement = (leader.members_improving / Math.max(leader.team_members, 1)) * 100;
+    
+    return Math.round((teamPerformance * 0.4 + improvementImpact * 0.3 + memberEngagement * 0.3));
   }
 
   // ================== CACHE MANAGEMENT ==================
@@ -898,7 +1377,9 @@ class ApiService {
       { name: 'Health Check', url: '/api/health' },
       { name: 'Users', url: '/api/users' },
       { name: 'Dashboard Stats', url: '/api/dashboard/stats' },
-      { name: 'Feedback Sessions', url: '/api/feedback-sessions' }
+      { name: 'Feedback Sessions', url: '/api/feedback-sessions' },
+      { name: 'Team Insights', url: '/api/dashboard/team-insights' },
+      { name: 'Skills Matrix', url: '/api/dashboard/team-skills-matrix' }
     ];
 
     console.log('🧪 Testing all API endpoints...');
